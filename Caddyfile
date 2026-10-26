@@ -1,3 +1,9 @@
+{
+	on_demand_tls {
+		ask http://app:8000/api/tls-ask
+	}
+}
+
 {$DOMAIN} {
 	encode gzip
 	reverse_proxy app:8000 {
@@ -6,4 +12,13 @@
 			write_timeout 30m
 		}
 	}
+}
+
+# Saytlar: slug.<DOMAIN> və bağlanmış öz domenləri (sertifikat avtomatik)
+https:// {
+	tls {
+		on_demand
+	}
+	encode gzip
+	reverse_proxy app:8000
 }

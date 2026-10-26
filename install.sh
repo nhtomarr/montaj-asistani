@@ -49,8 +49,25 @@ PathExists=$DIR/data/.restart
 [Install]
 WantedBy=multi-user.target
 UNIT
+# Telegram-dan /yenile → GitHub-dan son versiyanı çəkib yenidən yığır
+cat > /etc/systemd/system/montaj-update.service <<UNIT
+[Unit]
+Description=Montaj asistani update
+[Service]
+Type=oneshot
+WorkingDirectory=$DIR
+ExecStart=/bin/sh -c 'rm -f data/.update; git pull --ff-only && docker compose up -d --build && echo ok > data/.update_result || echo fail > data/.update_result'
+UNIT
+cat > /etc/systemd/system/montaj-update.path <<UNIT
+[Unit]
+Description=Montaj asistani update trigger
+[Path]
+PathExists=$DIR/data/.update
+[Install]
+WantedBy=multi-user.target
+UNIT
 systemctl daemon-reload
-systemctl enable --now montaj-restart.path
+systemctl enable --now montaj-restart.path montaj-update.path
 
 docker compose up -d --build
 

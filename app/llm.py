@@ -24,6 +24,24 @@ def _extract_json(text: str):
     return obj
 
 
+def ask_text(system: str, content, max_tokens: int = 20000) -> str:
+    """Uzun mətn cavabı (məs. tam HTML). content: str və ya Claude content blokları siyahısı."""
+    if not ANTHROPIC_API_KEY:
+        raise LLMError("ANTHROPIC_API_KEY təyin edilməyib")
+    r = httpx.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"},
+        json={"model": ANTHROPIC_MODEL, "max_tokens": max_tokens, "system": system,
+              "messages": [{"role": "user", "content": content}]},
+        timeout=600,
+    )
+    if r.status_code >= 400:
+        raise LLMError(f"Claude API {r.status_code}: {r.text[:300]}")
+    data = r.json()
+    return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+
+
 def ask_json(system: str, user: str, max_tokens: int = 4000, retries: int = 2):
     if not ANTHROPIC_API_KEY:
         raise LLMError("ANTHROPIC_API_KEY təyin edilməyib")

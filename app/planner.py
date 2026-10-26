@@ -30,7 +30,12 @@ PRESETS = {
 
 SYSTEM = """Sən video montaj asistanının əmr analizatorusan. İstifadəçi (Azərbaycan, türk, rus və ya ingilis dilində) tapşırıq verir.
 Onu JSON plana çevir. Sahələr:
-- action: "process" (video emalı), "status" (iş vəziyyətini soruşur), "chat" (başqa sual/söhbət)
+- action: "process" (video emalı), "status" (iş vəziyyətini soruşur), "chat" (başqa sual/söhbət),
+  "site_create" (yeni sayt/landing/səhifə yığmaq), "site_edit" (mövcud saytda düzəliş, şəkil əlavə etmək),
+  "site_undo" (saytın əvvəlki versiyasını qaytarmaq)
+- site_name: yeni sayt üçün qısa ad (məs. "Village Pro menyu"); site_slug: düzəliş/undo üçün mövcud saytlardan biri
+  (aydın deyilməyibsə və bir sayt varsa onu, bir neçə varsa ən sonuncunu seç)
+- site_request: istifadəçinin sayt istəyi, onun sözləri ilə tam (rənglər, bölmələr, əlaqə məlumatları və s.)
 - video: "latest" və ya konkret video id (rəqəm), istifadəçi aydın göstəribsə
 - clean_edit: təkrarları/boşluqları/artıq hissələri kəsmək (default true)
 - loudnorm: səs səviyyəsini normallaşdırmaq (default true)
@@ -48,16 +53,18 @@ Qeyd: "YouTube-a yüklə" = long_video true + upload_youtube true. "Reels/Instag
 Əgər yalnız reels istənibsə long_video false et."""
 
 
-def plan_from_text(text: str, latest_video: dict | None, logos: list[str]) -> dict:
+def plan_from_text(text: str, latest_video: dict | None, logos: list[str], sites: list[str] | None = None) -> dict:
     vinfo = (f"Son video: id={latest_video['id']}, ad={latest_video['name']}, "
              f"{latest_video['duration']/60:.1f} dəq" if latest_video else "Hələ video yoxdur")
     user = (f"{vinfo}\nMövcud loqolar: {', '.join(logos) or 'yoxdur'}\n"
+            f"Mövcud saytlar (köhnədən yeniyə): {', '.join(sites or []) or 'yoxdur'}\n"
             f"Montaj qaydaları:\n{config.rules()}\n\nƏmr: {text}")
     try:
         p = ask_json(SYSTEM, user, max_tokens=1200)
     except LLMError:
         p = {"action": "process", "extra": text}
-    plan = {**DEFAULT_PLAN, **{k: v for k, v in p.items() if k in DEFAULT_PLAN or k == "reply"}}
+    extra_keys = ("reply", "site_name", "site_slug", "site_request")
+    plan = {**DEFAULT_PLAN, **{k: v for k, v in p.items() if k in DEFAULT_PLAN or k in extra_keys}}
     plan["source_text"] = text
     return plan
 

@@ -13,6 +13,7 @@ import config
 import db
 import pipeline
 import planner
+import sites
 import stt
 import videos
 from editor.transcript import fmt_ts
@@ -69,6 +70,8 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "• Video göndərin (2 GB-a qədər) — sonra nə edəcəyimi deyin və ya düyməni seçin.\n"
         "• Mətnlə və ya səsli mesajla tapşırıq verin: \"son videonu montaj et, reels hazırla, YouTube-a yüklə\".\n"
         "• Loqo: PNG faylı *sənəd* kimi göndərin, izahına `loqo nizami` yazın.\n"
+        "• Sayt: \"Village Pro üçün menyu saytı yığ...\" yazın; şəkil göndərsəniz sayta qoyulur. "
+        "/saytlar, /domen, /saytsil\n"
         "• /qaydalar — montaj qaydalarına bax / dəyiş\n"
         "• /status — son tapşırıq\n"
         "• /videolar — son videolar\n\n"
@@ -146,13 +149,23 @@ async def on_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     m = update.message
     d = m.document
     cap = (m.caption or "").strip()
-    if (d.mime_type or "") == "image/png" or (d.file_name or "").lower().endswith(".png"):
-        parts = cap.lower().replace("/", "").split()
-        name = parts[1] if len(parts) > 1 and parts[0] in ("loqo", "logo") else "default"
+    parts = cap.lower().replace("/", "").split()
+    is_png = (d.mime_type or "") == "image/png" or (d.file_name or "").lower().endswith(".png")
+    if is_png and parts and parts[0] in ("loqo", "logo"):
+        name = parts[1] if len(parts) > 1 else "default"
         f = await d.get_file()
         await f.download_to_drive(config.LOGOS_DIR / f"{name}.png")
         return await m.reply_text(f"✅ Loqo saxlanıldı: {name}\nMövcud loqolar: {', '.join(_logos())}")
-    await m.reply_text("Bu faylı tanımadım. Video və ya PNG loqo göndərin.")
+    if (d.mime_type or "").startswith("image/"):
+        f = await d.get_file()
+        tmp = config.WORK_DIR / f"doc_{d.file_unique_id}"
+        await f.download_to_drive(tmp)
+        sites.add_inbox_image(tmp, d.file_name or "sekil.jpg")
+        if cap:
+            return await handle_text(update, ctx, cap)
+        return await m.reply_text(f"🖼 Şəkil götürüldü ({sites.inbox_count()} ədəd gözləyir). "
+                                  "Loqo idisə, izahına \"loqo <ad>\" yazıb yenidən göndərin.")
+    await m.reply_text("Bu faylı tanımadım. Video, şəkil və ya PNG loqo göndərin.")
 
 
 async def on_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -181,13 +194,99 @@ async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text(update: Update, ctx, text: str, video_id: int | None = None):
     latest = db.get_video(video_id) if video_id else db.latest_video()
-    plan = await asyncio.to_thread(planner.plan_from_text, text, latest, _logos())
+    site_slugs = [s["slug"] for s in sites.list_sites()]
+    plan = await asyncio.to_thread(planner.plan_from_text, text, latest, _logos(), site_slugs)
+    if plan.get("action", "").startswith("site_"):
+        return await handle_site(update, plan, site_slugs)
     if plan.get("action") == "status":
         return await update.effective_message.reply_text(status_text())
     if plan.get("action") == "chat":
         return await update.effective_message.reply_text(plan.get("reply") or "Video göndərin və tapşırığı deyin.")
     res = create_job(plan, update.effective_chat.id, "telegram", video_id)
     await update.effective_message.reply_text(res["message"])
+
+
+async def handle_site(update: Update, plan: dict, slugs: list[str]):
+    msg = update.effective_message
+    action = plan["action"]
+    req = plan.get("site_request") or plan.get("source_text", "")
+    slug = plan.get("site_slug") if plan.get("site_slug") in slugs else (slugs[-1] if slugs else None)
+    try:
+        if action == "site_create" or not slug:
+            n = sites.inbox_count()
+            m = await msg.reply_text(f"🛠 Sayt yığılır{f' ({n} şəkil ilə)' if n else ''}... 1–3 dəqiqə.")
+            r = await asyncio.to_thread(sites.create, plan.get("site_name") or "sayt", req)
+            await m.edit_text(f"✅ Sayt hazırdır: {r['url']}\n\nDüzəliş üçün sadəcə yazın, məs. "
+                              f"\"rəngi tündləşdir, WhatsApp düyməsi əlavə et\".")
+        elif action == "site_edit":
+            m = await msg.reply_text(f"✏️ {slug} saytında düzəliş edilir...")
+            r = await asyncio.to_thread(sites.edit, slug, req)
+            await m.edit_text(f"✅ Yeniləndi: {r['url']}\n(Brauzerdə səhifəni yeniləyin.) Geri qaytarmaq üçün: \"geri qaytar\"")
+        elif action == "site_undo":
+            ok = await asyncio.to_thread(sites.undo, slug)
+            await msg.reply_text(f"↩️ Əvvəlki versiya qaytarıldı: {sites.site_url(slug)}" if ok
+                                 else "Əvvəlki versiya yoxdur.")
+    except Exception as e:  # noqa: BLE001
+        log.exception("site")
+        await msg.reply_text(f"❌ Sayt alınmadı: {str(e)[:500]}")
+
+
+async def cmd_sites(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    ss = sites.list_sites()
+    await update.message.reply_text("\n".join(f"• {s['slug']}: {s['url']}" for s in ss) or "Hələ sayt yoxdur.",
+                                    disable_web_page_preview=True)
+
+
+async def cmd_domain(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    args = ctx.args or []
+    if len(args) != 2:
+        return await update.message.reply_text("İstifadə: /domen <sayt> <domen>\nməs: /domen village-pro villagepro.az")
+    slug, dom = args
+    if slug not in [s["slug"] for s in sites.list_sites()]:
+        return await update.message.reply_text("Belə sayt yoxdur. /saytlar ilə baxın.")
+    sites.set_domain(slug, dom)
+    ip = config.PUBLIC_URL.split("://")[-1].split(".sslip.io")[0].replace("-", ".")
+    await update.message.reply_text(
+        f"✅ {dom} → {slug} bağlandı.\n\nDomen panelində (Cloudflare və s.) A qeydi yaradın:\n"
+        f"{dom} → {ip}\nwww → {ip}\n(Cloudflare-də proxy söndürülü — boz bulud.)\n"
+        f"DNS yayılandan sonra https://{dom} özü açılacaq, SSL avtomatik verilir.")
+
+
+async def cmd_delete_site(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    if not ctx.args:
+        return await update.message.reply_text("İstifadə: /saytsil <sayt>")
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton(f"🗑 Bəli, {ctx.args[0]} silinsin",
+                                                     callback_data=f"sdel:{ctx.args[0]}")]])
+    await update.message.reply_text("Əminsiniz? Bu geri qaytarılmır.", reply_markup=kb)
+
+
+async def cmd_update(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    (config.DATA_DIR / ".update").write_text("1")
+    await update.message.reply_text("🔄 Son versiya yüklənir və sistem yenidən yığılır (2–4 dəq). "
+                                    "Bot bir müddət cavab verməyə bilər.")
+
+
+async def on_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    m = update.message
+    ph = m.photo[-1]
+    f = await ph.get_file()
+    tmp = config.WORK_DIR / f"ph_{ph.file_unique_id}.jpg"
+    await f.download_to_drive(tmp)
+    sites.add_inbox_image(tmp, "foto.jpg")
+    if m.caption:
+        return await handle_text(update, ctx, m.caption)
+    await m.reply_text(f"🖼 Şəkil götürüldü ({sites.inbox_count()} ədəd gözləyir). "
+                       "Sonra yazın: \"yeni sayt yığ…\" və ya \"saytda bu şəkilləri qalereyaya əlavə et\".")
 
 
 def create_job(plan: dict, chat_id: int | None, origin: str, video_id: int | None = None) -> dict:
@@ -238,6 +337,10 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await m.edit_text(f"✅ {target.capitalize()}: {link}")
         except Exception as e:  # noqa: BLE001
             await m.edit_text(f"❌ {target}: {e}")
+    elif kind == "sdel":
+        await q.edit_message_reply_markup(None)
+        sites.delete(rest[0])
+        await q.message.reply_text(f"🗑 {rest[0]} silindi.")
     elif kind == "skip":
         await q.edit_message_reply_markup(None)
         await q.message.reply_text("Yaxşı, paylaşmıram. Fayllar linkdə qalır.")
@@ -339,6 +442,11 @@ def build_app() -> Application:
     app.add_handler(CommandHandler(["qaydalar", "rules"], cmd_rules))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("videolar", cmd_videos))
+    app.add_handler(CommandHandler("saytlar", cmd_sites))
+    app.add_handler(CommandHandler("domen", cmd_domain))
+    app.add_handler(CommandHandler("saytsil", cmd_delete_site))
+    app.add_handler(CommandHandler("yenile", cmd_update))
+    app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, on_video))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, on_voice))

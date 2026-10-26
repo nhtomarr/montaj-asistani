@@ -63,8 +63,34 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 app.mount("/media", StaticFiles(directory=config.PUBLIC_DIR), name="media")
 from setup_page import router as setup_router  # noqa: E402
+import sites  # noqa: E402
+from fastapi.responses import FileResponse, Response  # noqa: E402
 
 app.include_router(setup_router)
+
+
+@app.middleware("http")
+async def serve_sites(request: Request, call_next):
+    """slug.<DOMAIN> və ya bağlanmış domen gəlirsə, saytın statik fayllarını verir."""
+    slug = sites.resolve_host(request.headers.get("host", ""))
+    if not slug:
+        return await call_next(request)
+    base = (sites.SITES_DIR / slug).resolve()
+    rel = request.url.path.lstrip("/") or "index.html"
+    if rel.startswith("history"):
+        return Response(status_code=404)
+    p = (base / rel).resolve()
+    if p.is_dir():
+        p = p / "index.html"
+    if not str(p).startswith(str(base)) or not p.is_file():
+        p = base / "index.html"
+    return FileResponse(p, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/api/tls-ask")
+def tls_ask(domain: str = ""):
+    """Caddy on-demand TLS: yalnız tanınan saytlar üçün sertifikat alınsın."""
+    return Response(status_code=200 if sites.resolve_host(domain) else 404)
 
 
 @app.get("/", response_class=HTMLResponse)
