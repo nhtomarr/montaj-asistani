@@ -66,7 +66,9 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not _allowed(update):
         return await update.message.reply_text(f"İcazə yoxdur. Sizin ID: {update.effective_user.id}")
     await update.message.reply_text(
-        "Salam! Mən video montaj asistanınızam.\n\n"
+        "Salam! Mən JARVIS-əm — şəxsi asistanınız.\n"
+        "Mənə istənilən tapşırığı yazın və ya səsli deyin: araşdırma, poçt, təqvim, tapşırıqlar, xatırlatmalar, "
+        "hesabatlar, video montaj, saytlar. /profil — özünüz haqqında yazın.\n\n"
         "• Video göndərin (2 GB-a qədər) — sonra nə edəcəyimi deyin və ya düyməni seçin.\n"
         "• Mətnlə və ya səsli mesajla tapşırıq verin: \"son videonu montaj et, reels hazırla, YouTube-a yüklə\".\n"
         "• Loqo: PNG faylı *sənəd* kimi göndərin, izahına `loqo nizami` yazın.\n"
@@ -183,13 +185,47 @@ async def on_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not text:
         return await m.reply_text("Səsi başa düşmədim, yenidən deyin.")
     await m.reply_text(f"🎙 «{text}»")
-    await handle_text(update, ctx, text)
+    await ask_jarvis(update, text)
 
 
 async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not _allowed(update):
         return
-    await handle_text(update, ctx, update.message.text)
+    await ask_jarvis(update, update.message.text)
+
+
+async def ask_jarvis(update: Update, text: str):
+    """Sərbəst mesajlar Jarvis-ə gedir (araşdırma, poçt, təqvim, tapşırıq, video, sayt...)."""
+    from jarvis import agent
+
+    chat = update.effective_chat
+    await chat.send_action("typing")
+
+    async def keep_typing():
+        while True:
+            await asyncio.sleep(4)
+            await chat.send_action("typing")
+
+    t = asyncio.create_task(keep_typing())
+    try:
+        reply = await asyncio.to_thread(agent.ask_safe, text, "telegram")
+    finally:
+        t.cancel()
+    for i in range(0, len(reply), 4000):
+        await update.effective_message.reply_text(reply[i:i + 4000], disable_web_page_preview=True)
+
+
+async def cmd_profile(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    from jarvis.agent import PROFILE_FILE, _profile
+
+    text = update.message.text.partition(" ")[2].strip()
+    if text:
+        PROFILE_FILE.write_text(text, encoding="utf-8")
+        return await update.message.reply_text("✅ Profil yeniləndi. Jarvis bundan sonra bunu nəzərə alacaq.")
+    await update.message.reply_text("Jarvis-in sizin haqqınızda bildikləri:\n\n" + _profile()[:3500] +
+                                    "\n\nDəyişmək üçün: /profil <mətn> (kim olduğunuz, şirkətlər, iş saatları, üslub)")
 
 
 async def handle_text(update: Update, ctx, text: str, video_id: int | None = None):
@@ -284,7 +320,7 @@ async def on_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await f.download_to_drive(tmp)
     sites.add_inbox_image(tmp, "foto.jpg")
     if m.caption:
-        return await handle_text(update, ctx, m.caption)
+        return await ask_jarvis(update, f"[Şəkil göndərdim, sayt üçün gözləmədədir] {m.caption}")
     await m.reply_text(f"🖼 Şəkil götürüldü ({sites.inbox_count()} ədəd gözləyir). "
                        "Sonra yazın: \"yeni sayt yığ…\" və ya \"saytda bu şəkilləri qalereyaya əlavə et\".")
 
@@ -337,6 +373,19 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await m.edit_text(f"✅ {target.capitalize()}: {link}")
         except Exception as e:  # noqa: BLE001
             await m.edit_text(f"❌ {target}: {e}")
+    elif kind in ("jok", "jno"):
+        from jarvis import store, tools as jtools
+
+        pid = int(rest[0])
+        await q.edit_message_reply_markup(None)
+        if kind == "jno":
+            store.pending_set(pid, "ləğv")
+            return await q.message.reply_text("✖️ Ləğv edildi.")
+        try:
+            msg = await asyncio.to_thread(jtools.execute_pending, pid)
+        except Exception as e:  # noqa: BLE001
+            msg = f"❌ İcra olunmadı: {e}"
+        await q.message.reply_text(msg)
     elif kind == "sdel":
         await q.edit_message_reply_markup(None)
         sites.delete(rest[0])
@@ -424,6 +473,21 @@ class TelegramSink:
             chat, "Baxın, hər şey qaydasındadırsa paylaşım üçün təsdiq edin." + (f"\n\nMətn:\n{cap}" if cap else ""),
             reply_markup=InlineKeyboardMarkup(kb))
 
+    def send_text(self, text):
+        chat = db.kv_get("owner_chat")
+        if chat:
+            for i in range(0, len(text), 4000):
+                self._run(self.app.bot.send_message(chat, text[i:i + 4000], disable_web_page_preview=True))
+
+    def confirm_action(self, pid, summary):
+        chat = db.kv_get("owner_chat")
+        if not chat:
+            return
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Təsdiqlə", callback_data=f"jok:{pid}"),
+                                    InlineKeyboardButton("✖️ Ləğv et", callback_data=f"jno:{pid}")]])
+        self._run(self.app.bot.send_message(chat, f"🔐 Jarvis təsdiq istəyir (#{pid}):\n\n{summary[:3500]}",
+                                            reply_markup=kb, disable_web_page_preview=True))
+
     def failed(self, job_id, err):
         job = db.get_job(job_id)
         chat = self._chat(job)
@@ -446,6 +510,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("domen", cmd_domain))
     app.add_handler(CommandHandler("saytsil", cmd_delete_site))
     app.add_handler(CommandHandler("yenile", cmd_update))
+    app.add_handler(CommandHandler("profil", cmd_profile))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, on_video))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

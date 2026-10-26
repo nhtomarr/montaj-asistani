@@ -115,6 +115,36 @@ Zəng nümunəsi:
 
 ---
 
+## JARVIS — şəxsi asistan
+
+Telegram-a yazdığınız və ya səsli dediyiniz hər şey, telefon zəngləri və panel (`/jarvis?t=<PANEL_TOKEN>`) Jarvis-ə gedir.
+
+| Blok | Nə edir |
+|---|---|
+| Araşdırma | İnternetdə axtarış və səhifə oxuma (Claude web search/fetch), fakt və ehtimalı ayırır |
+| Yaddaş | Qeydlər, qərarlar, kontaktlar, araşdırmalar — tam mətn axtarışı ilə |
+| Analitika | Hesablama, müqayisə, cədvəl — kod icrası ilə |
+| Avtomatlaşdırma | Rutinlər (`daily 09:00`, `weekly mon 10:00`, `every 3h`), xatırlatmalar, səhər hesabatı |
+| İdarəetmə | Tapşırıqlar (məsul, son tarix, prioritet), fəaliyyət jurnalı |
+| Google | Gmail (oxu, çeşidlə, cavab ver), Calendar (görüş), Drive/Docs (sənəd) |
+| Media | Video montaj, Reels, YouTube/Instagram, saytlar |
+
+Təhlükəsizlik: pul, qiymət, müqavilə, öhdəlik olan məktublar və silmə əməliyyatları Telegram-da **Təsdiqlə** düyməsi ilə icra olunur.
+`/profil <mətn>` — Jarvis-ə özünüz və şirkətləriniz haqqında yazın.
+
+### Google-u qoşmaq (Gmail, Calendar, Drive, YouTube) — ≈10 dəq, kompüterdən
+
+1. https://console.cloud.google.com → yeni layihə: `Jarvis`.
+2. **APIs & Services → Library**: bu 4-ünü **Enable** edin: *Gmail API*, *Google Calendar API*, *Google Drive API*, *YouTube Data API v3*.
+3. **OAuth consent screen**: *External* → ad `Jarvis`, e-poçtunuz → *Test users*-ə öz Gmail-inizi əlavə edin.
+   Sonra **Publish app** (In production) basın. Bunu etməsəniz, giriş 7 gündən bir kəsiləcək.
+4. **Credentials → Create credentials → OAuth client ID → Web application**.
+   *Authorized redirect URIs*: setup səhifəsində göstərilən ünvan (`https://<server>/oauth/youtube/callback`).
+5. Client ID və Secret-i setup səhifəsinə yapışdırın → **Yadda saxla** → 1 dəq gözləyin.
+6. **🔗 Google hesabını qoş** → hesabı seçin → "Google hasn't verified this app" → *Advanced* → *Go to Jarvis* → bütün icazələri verin.
+
+---
+
 ## Təxmini xərclər
 
 | | |

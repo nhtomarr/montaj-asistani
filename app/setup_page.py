@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 import config
 import db
+from jarvis.google_api import SCOPES as GOOGLE_SCOPES
 
 router = APIRouter()
 ENV_FILE = config.DATA_DIR / "setup.env"
@@ -23,8 +24,8 @@ FIELDS = [
     ("ANTHROPIC_API_KEY", "Anthropic (Claude) API key", True, "console.anthropic.com → API Keys"),
     ("ELEVENLABS_API_KEY", "ElevenLabs API key", True, "elevenlabs.io → Developers → API Keys"),
     ("ALLOWED_CALLER_IDS", "Zəng icazəli nömrə(lər)", False, "məs. +994501234567; vergüllə bir neçə"),
-    ("YOUTUBE_CLIENT_ID", "YouTube OAuth Client ID", False, "Google Cloud → Credentials → OAuth client (Web application)"),
-    ("YOUTUBE_CLIENT_SECRET", "YouTube OAuth Client Secret", True, ""),
+    ("YOUTUBE_CLIENT_ID", "Google OAuth Client ID", False, "Google Cloud → Credentials → OAuth client (Web application)"),
+    ("YOUTUBE_CLIENT_SECRET", "Google OAuth Client Secret", True, ""),
     ("YOUTUBE_DEFAULT_PRIVACY", "YouTube default görünmə", False, "private | unlisted | public"),
     ("INSTAGRAM_USER_ID", "Instagram User ID", False, "developers.facebook.com → Instagram → API setup"),
     ("INSTAGRAM_ACCESS_TOKEN", "Instagram access token", True, "60 günlük token, server özü yeniləyir"),
@@ -62,7 +63,7 @@ def _status(env: dict) -> list[tuple[bool, str]]:
         (bool(bot), f"Telegram bot işləyir: @{bot}" if bot else "Telegram bot hələ qoşulmayıb"),
         (bool(env.get("ANTHROPIC_API_KEY")), "Claude API"),
         (bool(env.get("ELEVENLABS_API_KEY")), "ElevenLabs (səs → mətn və telefon)"),
-        (bool(env.get("YOUTUBE_REFRESH_TOKEN")), "YouTube hesabı qoşulub"),
+        (bool(env.get("GOOGLE_REFRESH_TOKEN")), "Google: Gmail, Calendar, Drive, YouTube"),
         (bool(env.get("INSTAGRAM_ACCESS_TOKEN") and env.get("INSTAGRAM_USER_ID")), "Instagram"),
     ]
 
@@ -91,13 +92,13 @@ def setup_get(t: str | None = None, msg: str = ""):
                  for ok, s in _status(env))
     yt_btn = ""
     if env.get("YOUTUBE_CLIENT_ID") and env.get("YOUTUBE_CLIENT_SECRET"):
-        yt_btn = f'<a class="btn" href="/oauth/youtube/start?t={t}">▶️ YouTube hesabını qoş</a>'
+        yt_btn = f'<a class="btn" href="/oauth/youtube/start?t={t}">🔗 Google hesabını qoş (Gmail, Calendar, Drive, YouTube)</a>'
     base = config.PUBLIC_URL
     page = SETUP_HTML.format(
         msg=f'<div class="msg">{html.escape(msg)}</div>' if msg else "",
         status=st, rows="".join(rows), t=t, yt_btn=yt_btn,
         redirect=html.escape(f"{base}/oauth/youtube/callback"),
-        panel=html.escape(f"{base}/panel?t={t}"),
+        panel=html.escape(f"{base}/panel?t={t}"), jarvis=html.escape(f"{base}/jarvis?t={t}"),
         task_url=html.escape(f"{base}/api/agent/task"), status_url=html.escape(f"{base}/api/agent/status"),
         secret=html.escape(env["AGENT_TOOL_SECRET"]),
     )
@@ -137,7 +138,7 @@ def yt_start(t: str | None = None):
         "client_id": env.get("YOUTUBE_CLIENT_ID", ""),
         "redirect_uri": f"{config.PUBLIC_URL}/oauth/youtube/callback",
         "response_type": "code",
-        "scope": "https://www.googleapis.com/auth/youtube.upload",
+        "scope": " ".join(GOOGLE_SCOPES),
         "access_type": "offline",
         "prompt": "consent",
         "state": t,
@@ -159,9 +160,10 @@ def yt_callback(code: str = "", state: str = "", error: str = ""):
     if not rt:
         return RedirectResponse(f"/setup?t={t}&msg=" + urllib.parse.quote(f"YouTube xətası: {r.text[:200]}"), 303)
     env["YOUTUBE_REFRESH_TOKEN"] = rt
+    env["GOOGLE_REFRESH_TOKEN"] = rt
     _write_env(env)
     _restart()
-    return RedirectResponse(f"/setup?t={t}&msg=" + urllib.parse.quote("✅ YouTube qoşuldu. Sistem yenidən başlayır."), 303)
+    return RedirectResponse(f"/setup?t={t}&msg=" + urllib.parse.quote("✅ Google qoşuldu (Gmail, Calendar, Drive, YouTube). Sistem yenidən başlayır."), 303)
 
 
 SETUP_HTML = """<!doctype html><html lang="az"><head><meta charset="utf-8">
@@ -183,12 +185,12 @@ code{{word-break:break-all;background:#0e1426;padding:2px 5px;border-radius:5px;
 <h1>🎬 Montaj Asistanı — quraşdırma</h1>{msg}
 <div class="card"><h2>Vəziyyət</h2><ul>{status}</ul></div>
 <form method="post" action="/setup?t={t}" class="card"><h2>Açarlar</h2>{rows}<button>Yadda saxla</button></form>
-<div class="card"><h2>YouTube</h2>
+<div class="card"><h2>Google (Gmail, Calendar, Drive, YouTube)</h2>
 <p><small>Google Cloud-da OAuth client (<b>Web application</b>) yaradanda <i>Authorized redirect URI</i> kimi bunu yazın:</small><br><code>{redirect}</code></p>
 {yt_btn}</div>
 <div class="card"><h2>ElevenLabs telefon agenti</h2>
 <p><small>Tool URL (POST):</small><br><code>{task_url}</code></p>
 <p><small>Status URL (GET):</small><br><code>{status_url}</code></p>
 <p><small>Header <b>X-Agent-Secret</b>:</small><br><code>{secret}</code></p></div>
-<div class="card"><h2>Panel</h2><a href="{panel}">Tapşırıqlar və video yükləmə →</a></div>
+<div class="card"><h2>Panel</h2><p><a href="{jarvis}">🔵 JARVIS paneli →</a></p><a href="{panel}">Video tapşırıqları və yükləmə →</a></div>
 </main></body></html>"""

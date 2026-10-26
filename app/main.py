@@ -49,6 +49,9 @@ async def _start_bot():
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     pipeline.start_worker()
+    from jarvis import scheduler as jsched
+
+    jsched.start()
     task = asyncio.create_task(_start_bot()) if config.TELEGRAM_BOT_TOKEN else None
     yield
     if task:
@@ -67,6 +70,9 @@ import sites  # noqa: E402
 from fastapi.responses import FileResponse, Response  # noqa: E402
 
 app.include_router(setup_router)
+from jarvis.web import router as jarvis_router  # noqa: E402
+
+app.include_router(jarvis_router)
 
 
 @app.middleware("http")
