@@ -69,7 +69,8 @@ def _loudnorm_filter(target: float, m: dict | None) -> str:
     if m:
         base += (f":measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
                  f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
-    return base + ",aresample=48000"
+    # Kanal düzümünü açıq göstəririk — köhnə ffmpeg (Debian 5.1) loudnorm-dan sonra onu itirir
+    return base + ",aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo"
 
 
 def _esc(path: str) -> str:
@@ -106,6 +107,7 @@ def render(
             fo = max(0.0, d - 0.012)
             parts.append(
                 f"[0:a]atrim=start={a:.3f}:end={b:.3f},asetpts=PTS-STARTPTS,"
+                f"aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
                 f"afade=t=in:st=0:d=0.012,afade=t=out:st={fo:.3f}:d=0.012[a{i}]"
             )
             lab += f"[a{i}]"
