@@ -132,6 +132,29 @@ Telegram-a yazdığınız və ya səsli dediyiniz hər şey, telefon zəngləri 
 Təhlükəsizlik: pul, qiymət, müqavilə, öhdəlik olan məktublar və silmə əməliyyatları Telegram-da **Təsdiqlə** düyməsi ilə icra olunur.
 `/profil <mətn>` — Jarvis-ə özünüz və şirkətləriniz haqqında yazın.
 
+### Reklam kabinetləri (Meta, Google Ads, TikTok)
+Jarvis: hesabat, kampaniya siyahısı, **dayandırma** (dərhal), **aktivləşdirmə / büdcə / kopyalama** (Telegram təsdiqi ilə),
+borc, blok və aşağı balans üçün 2 saatdan bir yoxlama və **ödəniş linki**. Ödənişin özü API ilə mümkün deyil.
+- **Meta:** business.facebook.com → Business ayarları → *System users* → Admin system user → reklam hesablarını *Assign assets* →
+  *Generate token* (ads_management, ads_read, business_management) → setup-da `META_ADS_TOKEN`.
+- **Google Ads:** ads.google.com → Tools → *API Center* → developer token (Basic access müraciəti) → `GOOGLE_ADS_DEVELOPER_TOKEN`,
+  `GOOGLE_ADS_CUSTOMER_IDS`. Google Cloud-da *Google Ads API*-ni Enable edin və "Google hesabını qoş"u yenidən basın.
+- **TikTok:** business-api.tiktok.com → developer app → access token → `TIKTOK_ACCESS_TOKEN`, `TIKTOK_ADVERTISER_IDS`.
+
+### Sayt nəzarəti
+Setup-da `MONITOR_URLS` (vergüllə) və ya Jarvis-ə: "luxresidence.az-ı nəzarətə götür". 5 dəqiqədən bir yoxlanır,
+gündə bir dəfə SSL və domen bitmə tarixi. Çökəndə / bərpa olunanda / SSL ≤14 gün / domen ≤30 gün → Telegram.
+
+### WhatsApp (Cloud API)
+Müştərilərə virtual məsləhətçi cavab verir (yalnız bilik bazasından), lead toplayır, endirim/şikayət/görüşü sizə ötürür.
+1. developers.facebook.com → tətbiq → **WhatsApp** məhsulu → nömrə əlavə edin (mövcud WhatsApp Business nömrəsi köçürülə bilər).
+2. Setup-da `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_BUSINESS`.
+3. WhatsApp → Configuration → Webhook: setup səhifəsindəki URL + verify token → *messages* sahəsinə abunə olun.
+4. Bilik bazası: bota qiymət/FAQ faylını (.pdf/.docx/.txt) göndərin, izahına `biznes` yazın — və ya Jarvis-ə "bilik bazasına əlavə et: ..." deyin.
+
+### Sənədləri yaddaşa yükləmək
+Bota .pdf / .docx / .txt / .md / .csv faylı göndərin → Jarvis-in yaddaşına yazılır və sual verə bilərsiniz.
+
 ### Google-u qoşmaq (Gmail, Calendar, Drive, YouTube) — ≈10 dəq, kompüterdən
 
 1. https://console.cloud.google.com → yeni layihə: `Jarvis`.

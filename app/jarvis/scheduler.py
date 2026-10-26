@@ -92,8 +92,32 @@ def _routines() -> None:
             _send(f"🔁 {r['name']}\n\n{out}")
 
 
+def _monitor(deep: bool) -> None:
+    from jarvis import monitor
+    if not monitor.targets():
+        return
+    for msg in monitor.run_checks(deep):
+        store.log("nəzarət", msg.splitlines()[0])
+        _send(msg)
+
+
+def _ads() -> None:
+    from jarvis import ads
+    if not any(ads.platforms().values()):
+        return
+    sent = set(db.kv_get("ads_alerts_sent", []) or [])
+    cur = set()
+    for msg in ads.check_alerts():
+        key = msg.splitlines()[0]
+        cur.add(key)
+        if key not in sent:
+            store.log("reklam", key)
+            _send(msg)
+    db.kv_set("ads_alerts_sent", list(cur))
+
+
 def loop() -> None:
-    last_inbox = 0.0
+    last_inbox = last_mon = last_deep = last_ads = 0.0
     while True:
         try:
             _reminders()
@@ -102,6 +126,15 @@ def loop() -> None:
             if time.time() - last_inbox > INBOX_EVERY:
                 last_inbox = time.time()
                 _check_inbox()
+            if time.time() - last_mon > 300:
+                last_mon = time.time()
+                deep = time.time() - last_deep > 86400
+                if deep:
+                    last_deep = time.time()
+                _monitor(deep)
+            if time.time() - last_ads > 7200:
+                last_ads = time.time()
+                _ads()
         except Exception as e:  # noqa: BLE001
             log.exception("scheduler: %s", e)
         time.sleep(30)

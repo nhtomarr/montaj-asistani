@@ -15,6 +15,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/adwords",
 ]
 _tok = {"value": None, "exp": 0.0}
 

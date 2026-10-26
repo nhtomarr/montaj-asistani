@@ -158,6 +158,31 @@ async def on_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f = await d.get_file()
         await f.download_to_drive(config.LOGOS_DIR / f"{name}.png")
         return await m.reply_text(f"✅ Loqo saxlanıldı: {name}\nMövcud loqolar: {', '.join(_logos())}")
+    fname = (d.file_name or "").lower()
+    if fname.endswith((".txt", ".md", ".pdf", ".docx", ".csv")):
+        f = await d.get_file()
+        tmp = config.WORK_DIR / f"kb_{d.file_unique_id}_{fname[-5:].strip('.')}"
+        await f.download_to_drive(tmp)
+        try:
+            text = await asyncio.to_thread(_extract_text, tmp, fname)
+        finally:
+            tmp.unlink(missing_ok=True)
+        if not text.strip():
+            return await m.reply_text("Faylda oxunan mətn tapmadım.")
+        from jarvis import store
+        kind = "biznes" if any(w in cap.lower() for w in ("biznes", "faq", "bilik", "whatsapp", "müştəri")) else "sənəd"
+        title = d.file_name or "sənəd"
+        chunks = [text[i:i + 3500] for i in range(0, len(text), 3500)][:40]
+        for i, ch in enumerate(chunks, 1):
+            store.mem_save(f"{title}" + (f" (hissə {i}/{len(chunks)})" if len(chunks) > 1 else ""), ch, kind, cap)
+        store.log("yaddaş", f"Sənəd yükləndi: {title} ({len(chunks)} hissə, {kind})")
+        await m.reply_text(f"🧠 «{title}» Jarvis-in yaddaşına yazıldı ({len(chunks)} hissə, növ: {kind}).\n"
+                           "İndi bu sənəd haqqında sual verə bilərsiniz."
+                           + ("\nWhatsApp müştəri agenti də bu məlumatdan istifadə edəcək." if kind == "biznes" else
+                              "\nİzahına «biznes» yazsanız, WhatsApp müştəri agenti də istifadə edər."))
+        if cap and kind == "sənəd":
+            await ask_jarvis(update, f"[«{title}» sənədini yaddaşa yüklədim] {cap}")
+        return
     if (d.mime_type or "").startswith("image/"):
         f = await d.get_file()
         tmp = config.WORK_DIR / f"doc_{d.file_unique_id}"
@@ -168,6 +193,16 @@ async def on_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return await m.reply_text(f"🖼 Şəkil götürüldü ({sites.inbox_count()} ədəd gözləyir). "
                                   "Loqo idisə, izahına \"loqo <ad>\" yazıb yenidən göndərin.")
     await m.reply_text("Bu faylı tanımadım. Video, şəkil və ya PNG loqo göndərin.")
+
+
+def _extract_text(path, fname: str) -> str:
+    if fname.endswith(".pdf"):
+        from pypdf import PdfReader
+        return "\n".join((pg.extract_text() or "") for pg in PdfReader(str(path)).pages)
+    if fname.endswith(".docx"):
+        import docx
+        return "\n".join(p.text for p in docx.Document(str(path)).paragraphs)
+    return path.read_text(encoding="utf-8", errors="replace")
 
 
 async def on_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

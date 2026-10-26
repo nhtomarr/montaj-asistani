@@ -158,7 +158,7 @@ const NODES=[['ARAŞDIRMA',['web_search','web_fetch']],['YADDAŞ',['memory_save'
 ['SƏNƏDLƏR',['drive_search','drive_read','doc_create'],'DRIVE'],['TAPŞIRIQLAR',['task_add','task_list','task_update']],
 ['AVTOMATLAŞDIRMA',['routine_add','routine_list','routine_delete','reminder_add','reminder_list','reminder_delete']],
 ['HESABAT',['activity_log','system_status']],['VİDEO',['video_task'],'YOUTUBE'],['SAYTLAR',['site_task']],
-['TELEGRAM',[],'TELEGRAM'],['TELEFON',[],'ELEVENLABS'],['REKLAM',[],'__soon']].map((n,i,arr)=>({name:n[0],tools:n[1],mod:n[2],
+['TELEGRAM',[],'TELEGRAM'],['TELEFON',[],'ELEVENLABS'],['WHATSAPP',['whatsapp_conversations','whatsapp_read','whatsapp_send','leads_list','knowledge_add'],'WHATSAPP'],['REKLAM',['ads_accounts','ads_report','ads_campaigns','ads_set_status','ads_set_budget','ads_copy_campaign'],'ADS'],['NƏZARƏT',['monitor_status','monitor_check','monitor_add','monitor_remove'],'NƏZARƏT']].map((n,i,arr)=>({name:n[0],tools:n[1],mod:n[2],
 a:-Math.PI/2+i/arr.length*Math.PI*2+(i%2?.12:-.12),k:i%2?1.0:.82,heat:0,on:true,sat:[Math.random()*2-1,Math.random()*2-1]}));
 const toolMap={};NODES.forEach(n=>n.tools.forEach(t=>toolMap[t]=n));
 const P=[];for(let i=0;i<(innerWidth<980?110:240);i++)P.push({x:Math.random(),y:Math.random(),z:Math.random(),s:Math.random()*1.8+.3,p:Math.random()*6.28});

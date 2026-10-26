@@ -29,6 +29,25 @@ FIELDS = [
     ("YOUTUBE_DEFAULT_PRIVACY", "YouTube default görünmə", False, "private | unlisted | public"),
     ("INSTAGRAM_USER_ID", "Instagram User ID", False, "developers.facebook.com → Instagram → API setup"),
     ("INSTAGRAM_ACCESS_TOKEN", "Instagram access token", True, "60 günlük token, server özü yeniləyir"),
+    ("META_ADS_TOKEN", "Meta reklam tokeni (System User)", True, "business.facebook.com → Business ayarları → System users → Generate token (ads_management, ads_read, business_management)"),
+    ("META_AD_ACCOUNTS", "Meta reklam hesabları (boş = hamısı)", False, "act_123..., act_456... — vergüllə"),
+    ("GOOGLE_ADS_DEVELOPER_TOKEN", "Google Ads developer token", True, "ads.google.com → Tools → API Center"),
+    ("GOOGLE_ADS_CUSTOMER_IDS", "Google Ads hesab ID-ləri", False, "123-456-7890, ... — vergüllə"),
+    ("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "Google Ads MCC (manager) ID", False, "MCC ilə idarə olunursa"),
+    ("TIKTOK_ACCESS_TOKEN", "TikTok Ads access token", True, "business-api.tiktok.com → developer app"),
+    ("TIKTOK_ADVERTISER_IDS", "TikTok advertiser ID-ləri", False, "vergüllə"),
+    ("ADS_LOW_BALANCE", "Aşağı balans xəbərdarlığı həddi", False, "məs. 20"),
+    ("MONITOR_URLS", "Nəzarət olunan saytlar", False, "https://luxresidence.az, https://marox.az — vergüllə"),
+    ("WHATSAPP_TOKEN", "WhatsApp Cloud API token", True, "developers.facebook.com → WhatsApp → API Setup (System User tokeni tövsiyə olunur)"),
+    ("WHATSAPP_PHONE_ID", "WhatsApp Phone number ID", False, "eyni səhifədən"),
+    ("WHATSAPP_VERIFY_TOKEN", "WhatsApp webhook verify token", False, "istədiyiniz söz, webhook ayarında da eyni yazılır"),
+    ("WHATSAPP_APP_SECRET", "Meta App Secret", True, "App settings → Basic"),
+    ("WHATSAPP_BUSINESS", "WhatsApp-da təqdim olunan şirkət", False, "məs. LUX Residence"),
+    ("WHATSAPP_AUTO_REPLY", "WhatsApp avtomatik cavab", False, "true | false"),
+    ("JARVIS_AUTO_EMAIL", "Jarvis rutin məktubları özü göndərsin", False, "true | false"),
+    ("JARVIS_REPORT_TIME", "Səhər hesabatı saatı", False, "09:00"),
+    ("STT_PROVIDER", "Səs → mətn xidməti", False, "elevenlabs | openai"),
+    ("OPENAI_API_KEY", "OpenAI API key (Whisper, istəyə görə)", True, "platform.openai.com"),
 ]
 
 
@@ -65,6 +84,8 @@ def _status(env: dict) -> list[tuple[bool, str]]:
         (bool(env.get("ELEVENLABS_API_KEY")), "ElevenLabs (səs → mətn və telefon)"),
         (bool(env.get("GOOGLE_REFRESH_TOKEN")), "Google: Gmail, Calendar, Drive, YouTube"),
         (bool(env.get("INSTAGRAM_ACCESS_TOKEN") and env.get("INSTAGRAM_USER_ID")), "Instagram"),
+        (bool(env.get("META_ADS_TOKEN") or env.get("GOOGLE_ADS_DEVELOPER_TOKEN") or env.get("TIKTOK_ACCESS_TOKEN")), "Reklam kabinetləri"),
+        (bool(env.get("WHATSAPP_TOKEN")), "WhatsApp"),
     ]
 
 
@@ -100,7 +121,7 @@ def setup_get(t: str | None = None, msg: str = ""):
         redirect=html.escape(f"{base}/oauth/youtube/callback"),
         panel=html.escape(f"{base}/panel?t={t}"), jarvis=html.escape(f"{base}/jarvis?t={t}"),
         task_url=html.escape(f"{base}/api/agent/task"), status_url=html.escape(f"{base}/api/agent/status"),
-        secret=html.escape(env["AGENT_TOOL_SECRET"]),
+        secret=html.escape(env["AGENT_TOOL_SECRET"]), wa_url=html.escape(f"{base}/api/whatsapp/webhook"),
     )
     return page
 
@@ -113,7 +134,9 @@ async def setup_post(request: Request, t: str | None = None):
     old_tg = env.get("TELEGRAM_BOT_TOKEN")
     for key, _label, _secret, _hint in FIELDS:
         v = (form.get(key) or "").strip()
-        if v:
+        if v == "-":
+            env.pop(key, None)  # "-" yazmaq dəyəri silir
+        elif v:
             env[key] = v
     _write_env(env)
     new_tg = env.get("TELEGRAM_BOT_TOKEN")
@@ -184,10 +207,12 @@ code{{word-break:break-all;background:#0e1426;padding:2px 5px;border-radius:5px;
 </style></head><body><main>
 <h1>🎬 Montaj Asistanı — quraşdırma</h1>{msg}
 <div class="card"><h2>Vəziyyət</h2><ul>{status}</ul></div>
-<form method="post" action="/setup?t={t}" class="card"><h2>Açarlar</h2>{rows}<button>Yadda saxla</button></form>
+<form method="post" action="/setup?t={t}" class="card"><h2>Açarlar</h2><p><small>Boş xana = dəyişmir. Dəyəri silmək üçün <b>-</b> yazın.</small></p>{rows}<button>Yadda saxla</button></form>
 <div class="card"><h2>Google (Gmail, Calendar, Drive, YouTube)</h2>
 <p><small>Google Cloud-da OAuth client (<b>Web application</b>) yaradanda <i>Authorized redirect URI</i> kimi bunu yazın:</small><br><code>{redirect}</code></p>
 {yt_btn}</div>
+<div class="card"><h2>WhatsApp webhook</h2>
+<p><small>Callback URL:</small><br><code>{wa_url}</code></p><p><small>Verify token: setup-da yazdığınız WHATSAPP_VERIFY_TOKEN. Abunə: <b>messages</b>.</small></p></div>
 <div class="card"><h2>ElevenLabs telefon agenti</h2>
 <p><small>Tool URL (POST):</small><br><code>{task_url}</code></p>
 <p><small>Status URL (GET):</small><br><code>{status_url}</code></p>

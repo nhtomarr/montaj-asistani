@@ -81,6 +81,38 @@ TOOLS = [
     _s("routine_list", "Avtomatik rutinləri göstər.", {}),
     _s("routine_delete", "Rutini dayandır.", {"id": INT}, ["id"]),
     _s("activity_log", "Jarvis-in son N saatda gördüyü işlərin jurnalı (hesabat üçün).", {"hours": INT}),
+    # --- Reklam kabinetləri
+    _s("ads_accounts", "Reklam kabinetləri (Meta/Google Ads/TikTok): status, borc, balans, xərc, ödəniş linki.",
+       {"platform": {"type": "string", "enum": ["meta", "google", "tiktok"]}}),
+    _s("ads_report", "Kampaniya nəticələri: xərc, göstərilmə, klik, nəticə və nəticə qiyməti.",
+       {"platform": {"type": "string", "enum": ["meta", "google", "tiktok"]}, "account_id": STR,
+        "period": {"type": "string", "enum": ["today", "yesterday", "last_7d", "last_30d"]}},
+       ["platform", "account_id"]),
+    _s("ads_campaigns", "Kabinetdəki kampaniyaların siyahısı (id, status, büdcə).",
+       {"platform": {"type": "string", "enum": ["meta", "google", "tiktok"]}, "account_id": STR},
+       ["platform", "account_id"]),
+    _s("ads_set_status", "Kampaniyanı dayandır (dərhal) və ya aktivləşdir (sahibin təsdiqi ilə).",
+       {"platform": {"type": "string", "enum": ["meta", "google", "tiktok"]}, "account_id": STR, "campaign_id": STR,
+        "campaign_name": STR, "status": {"type": "string", "enum": ["pause", "activate"]}},
+       ["platform", "campaign_id", "status"]),
+    _s("ads_set_budget", "Kampaniyanın gündəlik büdcəsini dəyiş (valyuta vahidi ilə, məs. 15 = 15 AZN/USD). Təsdiqlə.",
+       {"platform": {"type": "string", "enum": ["meta", "google", "tiktok"]}, "account_id": STR, "campaign_id": STR,
+        "campaign_name": STR, "daily_budget": {"type": "number"}}, ["platform", "campaign_id", "daily_budget"]),
+    _s("ads_copy_campaign", "Meta kampaniyasını kopyala (dayandırılmış halda yaranır). Təsdiqlə.",
+       {"account_id": STR, "campaign_id": STR, "campaign_name": STR}, ["campaign_id"]),
+    # --- Nəzarət
+    _s("monitor_status", "İzlənən saytların vəziyyəti (işləyir/çöküb, cavab vaxtı, SSL/domen günləri).", {}),
+    _s("monitor_check", "Saytı indi yoxla (SSL və domen bitmə tarixi daxil).", {"url": STR}, ["url"]),
+    _s("monitor_add", "Saytı daimi nəzarətə əlavə et (5 dəqiqədən bir).", {"url": STR}, ["url"]),
+    _s("monitor_remove", "Saytı nəzarətdən çıxar.", {"url": STR}, ["url"]),
+    # --- WhatsApp və müştərilər
+    _s("whatsapp_conversations", "Son WhatsApp yazışmaları (müştərilər).", {}),
+    _s("whatsapp_read", "Müştəri ilə yazışmanı oxu.", {"phone": STR}, ["phone"]),
+    _s("whatsapp_send", "Müştəriyə WhatsApp mesajı göndər (yalnız sahib istəyəndə; son 24 saatda yazmış müştəriyə).",
+       {"phone": STR, "text": STR}, ["phone", "text"]),
+    _s("leads_list", "Toplanmış potensial müştərilər (WhatsApp və s.).", {}),
+    _s("knowledge_add", "Şirkət bilik bazasına məlumat əlavə et (WhatsApp müştəri agenti bundan istifadə edir): qiymətlər, "
+       "layihələr, şərtlər, FAQ.", {"title": STR, "content": STR}, ["title", "content"]),
     # --- Media / sayt
     _s("video_task", "Video montaj/Reels/YouTube/Instagram tapşırığı ver (son yüklənən videoya).",
        {"instruction": STR}, ["instruction"]),
@@ -193,6 +225,60 @@ def _run(name: str, a: dict, ctx: dict) -> str:
         for r in rows:
             r["vaxt"] = datetime.fromtimestamp(r.pop("ts"), store.TZ).strftime("%d.%m %H:%M")
         return _ok(rows)
+    if name == "ads_accounts":
+        from jarvis import ads
+        return _ok(ads.accounts(a.get("platform")))
+    if name == "ads_report":
+        from jarvis import ads
+        return _ok(ads.report(a["platform"], a["account_id"], a.get("period", "last_7d")))
+    if name == "ads_campaigns":
+        from jarvis import ads
+        return _ok(ads.campaigns(a["platform"], a["account_id"]))
+    if name == "ads_set_status":
+        from jarvis import ads
+        if a["status"] == "pause":
+            msg = ads.execute("ads_status", a)
+            store.log("reklam", msg)
+            return _ok({"status": "ok", "nəticə": msg})
+        return _approval("ads_status", a, f"📣 {a['platform'].upper()} kampaniyası AKTİVLƏŞDİRİLSİN: "
+                                          f"{a.get('campaign_name') or a['campaign_id']}")
+    if name == "ads_set_budget":
+        return _approval("ads_budget", a, f"💰 {a['platform'].upper()} «{a.get('campaign_name') or a['campaign_id']}» "
+                                          f"gündəlik büdcə → {a['daily_budget']}")
+    if name == "ads_copy_campaign":
+        a["platform"] = "meta"
+        return _approval("ads_copy", a, f"📑 Meta kampaniyası kopyalansın: {a.get('campaign_name') or a['campaign_id']}")
+    if name == "monitor_status":
+        from jarvis import monitor
+        return _ok(monitor.status())
+    if name == "monitor_check":
+        from jarvis import monitor
+        return _ok(monitor.check(a["url"] if a["url"].startswith("http") else "https://" + a["url"], deep=True))
+    if name == "monitor_add":
+        from jarvis import monitor
+        store.log("nəzarət", f"Nəzarətə əlavə: {a['url']}")
+        return _ok({"izlənir": monitor.add(a["url"])})
+    if name == "monitor_remove":
+        from jarvis import monitor
+        return _ok({"izlənir": monitor.remove(a["url"])})
+    if name == "whatsapp_conversations":
+        from jarvis import whatsapp
+        return _ok(whatsapp.conversations())
+    if name == "whatsapp_read":
+        from jarvis import whatsapp
+        return _ok(whatsapp.history(a["phone"].lstrip("+"), 30))
+    if name == "whatsapp_send":
+        from jarvis import whatsapp
+        r = whatsapp.send_text(a["phone"].lstrip("+"), a["text"])
+        store.log("whatsapp", f"Göndərildi → {a['phone']}: {a['text'][:80]}")
+        return _ok({"status": "göndərildi", "id": (r.get("messages") or [{}])[0].get("id")})
+    if name == "leads_list":
+        from jarvis import whatsapp
+        return _ok(whatsapp.leads())
+    if name == "knowledge_add":
+        mid = store.mem_save(a["title"], a["content"], "biznes", "")
+        store.log("yaddaş", f"Bilik bazasına: {a['title']}")
+        return _ok({"status": "əlavə edildi", "id": mid})
     if name == "video_task":
         import bot
         import planner
@@ -229,6 +315,8 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             "elevenlabs": bool(os.getenv("ELEVENLABS_API_KEY")),
             "son_video_isi": {"id": j["id"], "status": j["status"], "result": j["result"]} if j else None,
             "təsdiq_gözləyən": store.pending_open(), "rutinlər": len(store.routine_list()),
+            "reklam": __import__("jarvis.ads", fromlist=["x"]).platforms(),
+            "whatsapp": bool(os.getenv("WHATSAPP_TOKEN")),
         })
     return _ok({"xəta": f"naməlum alət {name}"})
 
@@ -247,6 +335,10 @@ def execute_pending(pid: int) -> str:
         g.gmail_send(a["to"], a.get("subject", ""), a["body"], a.get("reply_to_id"), a.get("cc"))
         store.log("məktub", f"Təsdiqlə göndərildi → {a['to']}: {a.get('subject') or 'cavab'}")
         msg = f"✅ Məktub göndərildi: {a['to']}"
+    elif p["kind"] in ("ads_status", "ads_budget", "ads_copy"):
+        from jarvis import ads
+        msg = "✅ " + ads.execute(p["kind"], a)
+        store.log("reklam", msg)
     elif p["kind"] == "calendar_delete":
         g.calendar_delete(a["id"])
         store.log("görüş", f"Təqvimdən silindi: {a.get('title') or a['id']}")

@@ -74,6 +74,27 @@ def overview(t: str | None = None):
     return out
 
 
+# ---------- WhatsApp Cloud API webhook
+@router.get("/api/whatsapp/webhook")
+def wa_verify(request: Request):
+    q = request.query_params
+    if q.get("hub.mode") == "subscribe" and q.get("hub.verify_token") == os.getenv("WHATSAPP_VERIFY_TOKEN", "-"):
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(q.get("hub.challenge", ""))
+    raise HTTPException(403, "verify failed")
+
+
+@router.post("/api/whatsapp/webhook")
+async def wa_hook(request: Request):
+    from jarvis import whatsapp
+    body = await request.body()
+    if not whatsapp.verify_signature(body, request.headers.get("x-hub-signature-256", "")):
+        raise HTTPException(403, "bad signature")
+    import json as _j
+    whatsapp.handle_webhook(_j.loads(body or b"{}"))
+    return {"ok": True}
+
+
 @router.get("/api/jarvis/live")
 def live(t: str | None = None):
     _check(t)
@@ -155,6 +176,9 @@ def _modules() -> dict:
     return {"CLAUDE": bool(config.ANTHROPIC_API_KEY), "TELEGRAM": bool(db.kv_get("bot_username")),
             "ELEVENLABS": bool(config.ELEVENLABS_API_KEY), "GMAIL": g.configured(), "CALENDAR": g.configured(),
             "DRIVE": g.configured(), "YOUTUBE": bool(os.getenv("YOUTUBE_REFRESH_TOKEN")),
-            "INSTAGRAM": bool(config.INSTAGRAM_ACCESS_TOKEN)}
+            "INSTAGRAM": bool(config.INSTAGRAM_ACCESS_TOKEN),
+            "ADS": any(__import__("jarvis.ads", fromlist=["x"]).platforms().values()),
+            "WHATSAPP": bool(os.getenv("WHATSAPP_TOKEN")),
+            "NƏZARƏT": bool(__import__("jarvis.monitor", fromlist=["x"]).targets())}
 
 
