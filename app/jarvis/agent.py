@@ -2,6 +2,9 @@
 import json
 import logging
 import os
+import threading
+import time
+from collections import deque
 
 import httpx
 
@@ -50,6 +53,22 @@ SERVER_TOOLS = [
 BETAS = "web-fetch-2025-09-10,code-execution-2025-08-25"
 
 
+# Panel üçün canlı alət istifadəsi (qovşaqlar yanır)
+LIVE: deque = deque(maxlen=60)
+_live_lock = threading.Lock()
+
+
+def live_push(name: str) -> None:
+    with _live_lock:
+        LIVE.append((time.time(), name))
+
+
+def live_recent(seconds: float = 20) -> list[dict]:
+    now = time.time()
+    with _live_lock:
+        return [{"tool": n, "ago": round(now - ts, 1)} for ts, n in LIVE if now - ts <= seconds]
+
+
 def _profile() -> str:
     base = PROFILE_FILE.read_text(encoding="utf-8") if PROFILE_FILE.exists() else DEFAULT_PROFILE
     extra = store.q("SELECT title, content FROM mem WHERE kind='profil' ORDER BY rowid DESC LIMIT 15")
@@ -83,11 +102,15 @@ def ask(message: str, channel: str = "telegram", remember: bool = True, max_step
     messages = [{"role": h["role"], "content": h["content"]} for h in hist]
     messages.append({"role": "user", "content": message})
     ctx = {"channel": channel}
+    live_push("core")
     final = ""
     for _ in range(max_steps):
         resp = _call(messages, system)
         content = resp.get("content", [])
         messages.append({"role": "assistant", "content": content})
+        for b in content:
+            if b.get("type") in ("tool_use", "server_tool_use"):
+                live_push(b.get("name", ""))
         texts = [b.get("text", "") for b in content if b.get("type") == "text"]
         if texts:
             final = "".join(texts).strip()

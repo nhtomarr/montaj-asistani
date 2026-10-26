@@ -1,0 +1,311 @@
+<!doctype html><html lang="az"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#010806"><title>JARVIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--g:#3dffa8;--g2:#19c37d;--rgb:61,255,168;--bg:#010806;--tx:#d7ffe9;--mut:#5fd3a0aa;--line:rgba(var(--rgb),.22);--glass:rgba(4,26,18,.55);--gold:#d6ffe9;--warn:#ffd166;--err:#ff5d73}
+:root[data-theme=blue]{--g:#5cc8ff;--g2:#2d7dff;--rgb:92,200,255;--bg:#020a1a;--tx:#e3f4ff;--mut:#86c3eaaa;--glass:rgba(5,20,45,.55);--gold:#ffd84d}
+.theme{font:600 9px "JetBrains Mono";letter-spacing:.2em;color:var(--g);background:transparent;border:1px solid var(--line);border-radius:99px;padding:4px 10px;margin-left:6px;cursor:pointer}
+.wave{display:block;width:180px;height:26px;margin:0 auto 6px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:14px/1.5 Inter,system-ui,sans-serif;overflow:hidden}
+#fx{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+.scan{position:fixed;inset:0;pointer-events:none;z-index:5;background:repeating-linear-gradient(0deg,rgba(var(--rgb),.035) 0 1px,transparent 1px 3px);mix-blend-mode:screen}
+.vig{position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at 50% 45%,transparent 45%,rgba(0,0,0,.75) 100%)}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+/* üst panel */
+.top{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;justify-content:space-between;align-items:flex-start;padding:max(14px,env(safe-area-inset-top)) 18px 0}
+.logo{font-family:Orbitron,sans-serif;font-weight:800;letter-spacing:.42em;font-size:20px;color:var(--g);text-shadow:0 0 12px var(--g),0 0 30px rgba(var(--rgb),.4);position:relative}
+.logo small{display:block;font:500 9px "JetBrains Mono";letter-spacing:.3em;color:var(--mut);margin-top:4px;text-shadow:none}
+.logo.glitch::before,.logo.glitch::after{content:"J.A.R.V.I.S";position:absolute;left:0;top:0;opacity:.7}
+.logo.glitch::before{color:#ff2a6d;transform:translate(2px,-1px);clip-path:inset(0 0 55% 0)}
+.logo.glitch::after{color:#05d9e8;transform:translate(-2px,1px);clip-path:inset(50% 0 0 0)}
+.clock{text-align:right}.clock b{font:600 22px "JetBrains Mono";color:#eafff4;letter-spacing:.06em;text-shadow:0 0 10px rgba(var(--rgb),.33)}
+.clock div{font:10px "JetBrains Mono";color:var(--mut);letter-spacing:.2em}
+.pill{display:inline-flex;gap:6px;align-items:center;font:600 10px "JetBrains Mono";letter-spacing:.25em;color:var(--g);border:1px solid var(--line);padding:4px 10px;border-radius:99px;background:rgba(3,30,20,.6)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 10px var(--g);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+/* pəncərələr */
+.side{position:fixed;top:92px;bottom:150px;width:min(340px,26vw);z-index:9;display:flex;flex-direction:column;gap:12px;overflow:auto;scrollbar-width:none}
+.side::-webkit-scrollbar{display:none}.side.l{left:18px}.side.r{right:18px}
+.win{background:var(--glass);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(10px) saturate(130%);-webkit-backdrop-filter:blur(10px);
+box-shadow:0 0 0 1px rgba(var(--rgb),.05) inset,0 0 30px rgba(var(--rgb),.07);position:relative;opacity:0;transform:translateY(14px) scale(.98);transition:opacity .6s,transform .6s}
+.win.on{opacity:1;transform:none}
+.win::before,.win::after{content:"";position:absolute;width:12px;height:12px;border:2px solid var(--g);opacity:.7}
+.win::before{top:-1px;left:-1px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}.win::after{bottom:-1px;right:-1px;border-left:0;border-top:0;border-radius:0 0 10px 0}
+.wh{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--line);font:600 10px "JetBrains Mono";letter-spacing:.24em;color:var(--g)}
+.wh i{font-style:normal;color:var(--mut);letter-spacing:.15em;font-weight:400;margin-left:8px}
+.ctl{display:flex;gap:5px}.ctl span{width:16px;height:16px;border:1px solid var(--line);border-radius:3px;display:grid;place-items:center;font-size:9px;color:var(--mut)}
+.wb{padding:8px 12px 10px;max-height:34vh;overflow:auto;scrollbar-width:thin}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:6px 0;border-top:1px dashed rgba(var(--rgb),.12);align-items:start}
+.row:first-child{border:0}
+.row .t{font:11px "JetBrains Mono";color:var(--mut);white-space:nowrap}.row .tag{font:600 9px "JetBrains Mono";letter-spacing:.15em;color:var(--g);opacity:.8}
+.row .s{font-size:12.5px;color:#e6fff2}.row .s small{display:block;color:var(--mut);font-size:11px}
+.empty{color:var(--mut);font:11px "JetBrains Mono";padding:6px 0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px}
+.st b{display:block;font:600 24px "JetBrains Mono";color:#fff;text-shadow:0 0 12px rgba(var(--rgb),.4)}.st span{font:9px "JetBrains Mono";letter-spacing:.18em;color:var(--mut);text-transform:uppercase}
+.bar{height:5px;background:rgba(var(--rgb),.1);border-radius:3px;overflow:hidden;margin:4px 0 8px}.bar>div{height:100%;background:linear-gradient(90deg,var(--g2),var(--g));box-shadow:0 0 8px var(--g);transition:width 1s}
+.kv{display:flex;justify-content:space-between;font:11px "JetBrains Mono";color:var(--mut)}.kv b{color:var(--tx);font-weight:600}
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-top:6px;font:10px "JetBrains Mono";letter-spacing:.08em}
+.mods div{display:flex;align-items:center;gap:6px}.mods .off{color:#5c7a6c}.mods .off .dot{background:#3a4d44;box-shadow:none;animation:none}
+.btns{display:flex;gap:6px;margin-top:6px}.btns button{font:600 10px "JetBrains Mono";letter-spacing:.12em;padding:6px 10px;border-radius:6px;border:1px solid var(--g);background:rgba(var(--rgb),.12);color:var(--g);cursor:pointer}
+.btns .no{border-color:#55706266;color:#9bb5a8;background:transparent}
+.log{font:11px/1.6 "JetBrains Mono";color:#bfffe0}.log .ln{white-space:pre-wrap;word-break:break-word}.log .ln b{color:var(--mut);font-weight:400}
+/* mərkəz */
+.center{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));width:min(760px,calc(100vw - 36px));z-index:11}
+.stage{position:fixed;left:50%;transform:translateX(-50%);bottom:100px;width:min(760px,calc(100vw - 36px));z-index:11}
+.state{text-align:center;font:600 11px "JetBrains Mono";letter-spacing:.35em;color:var(--g);text-shadow:0 0 10px var(--g);margin-bottom:8px;min-height:16px}
+.reply{max-height:22vh;overflow:auto;margin-bottom:10px;font-size:15px;line-height:1.55;color:#eafff4;text-shadow:0 0 14px rgba(var(--rgb),.25);text-align:center;padding:0 6px;scrollbar-width:none}
+.reply .you{display:block;font:11px "JetBrains Mono";letter-spacing:.12em;color:var(--mut);margin-bottom:6px}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--g);vertical-align:-2px;margin-left:2px;animation:blink 1s infinite}
+form{display:flex;gap:8px;align-items:center;background:rgba(2,20,13,.72);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 0 30px rgba(var(--rgb),.08)}
+form span{font:600 14px "JetBrains Mono";color:var(--g)}
+input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--tx);font:16px "JetBrains Mono";padding:8px 0}
+input::placeholder{color:#4f8c72}
+.mic,.send{width:44px;height:44px;border-radius:10px;border:1px solid var(--g);background:radial-gradient(circle,rgba(var(--rgb),.35),rgba(var(--rgb),.08));color:var(--g);display:grid;place-items:center;cursor:pointer;flex:none;touch-action:none;user-select:none;-webkit-user-select:none}
+.mic.rec{background:var(--g);color:#012;box-shadow:0 0 25px var(--g)}
+.mic svg,.send svg{width:20px;height:20px}
+.hint{text-align:center;font:9px "JetBrains Mono";letter-spacing:.25em;color:#3f7d63;margin-top:8px}
+/* açılış */
+#boot{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .8s}
+#boot pre{font:12px/1.7 "JetBrains Mono";color:var(--g);text-shadow:0 0 8px var(--g);width:min(560px,88vw);min-height:220px;margin:0;white-space:pre-wrap}
+#boot .go{margin-top:22px;font:600 12px "JetBrains Mono";letter-spacing:.4em;color:#000;background:var(--g);border:0;padding:14px 26px;border-radius:8px;box-shadow:0 0 40px var(--g);cursor:pointer;opacity:0;transition:opacity .5s}
+.flash{animation:flash .5s}@keyframes flash{0%{filter:brightness(2.5)}100%{filter:none}}
+/* mobil */
+@media (max-width:980px){
+ html,body{overflow:auto}
+ .side{position:relative;top:auto;bottom:auto;left:auto!important;right:auto!important;width:auto;margin:0 14px 12px;overflow:visible}
+ html,body{height:auto}
+ .stage{position:relative;left:auto;transform:none;bottom:auto;width:auto;margin:calc(min(49vw,280px) + 90px + min(36vw,205px)*1.45) 16px 14px}
+ .side.r{margin-bottom:120px}
+ .wb{max-height:none}
+ .center{position:fixed;bottom:0;width:100%;padding:10px 12px max(10px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(1,8,6,.92) 30%)}
+ .hint{display:none}
+ .reply{max-height:none;font-size:15px}
+ .top{position:absolute}.logo{font-size:16px}.clock b{font-size:17px}
+ #fx{position:fixed}
+}
+</style></head><body>
+<canvas id="fx"></canvas><div class="vig"></div><div class="scan"></div>
+<div id="boot"><pre id="bootlog"></pre><button class="go" id="go">SİSTEMİ AKTİVLƏŞDİR</button></div>
+
+<div class="top">
+ <div><div class="logo" id="logo">J.A.R.V.I.S<small>NEURAL CORE · v2.0</small></div>
+ <div style="margin-top:10px"><span class="pill"><span class="dot"></span><span id="sysState">ONLINE</span></span><button class="theme" id="themeBtn">TEMA</button></div></div>
+ <div class="clock"><b id="clk">--:--:--</b><div id="dte"></div></div>
+</div>
+
+<div class="stage" id="stage">
+ <canvas class="wave" id="wave" width="360" height="52"></canvas><div class="state" id="state">GÖZLƏMƏ REJİMİ</div>
+ <div class="reply" id="reply"></div>
+</div>
+<div class="side l" id="sideL">
+ <div class="win"><div class="wh">GÖSTƏRİCİLƏR<i>CANLI</i><div class="ctl"><span>0</span><span>⤢</span></div></div>
+  <div class="stats"><div class="st"><b id="sUnread">–</b><span>Oxunmamış məktub</span></div><div class="st"><b id="sEvents">–</b><span>Görüş · bu gün</span></div>
+  <div class="st"><b id="sTasks">0</b><span>Açıq tapşırıq</span></div><div class="st"><b id="sActs">0</b><span>Bu gün icra</span></div></div></div>
+ <div class="win"><div class="wh">TƏQVİM<i id="calSub">BU GÜN · SABAH</i><div class="ctl"><span>⤢</span><span>✕</span></div></div><div class="wb" id="events"></div></div>
+ <div class="win"><div class="wh">TƏSDİQ GÖZLƏYİR<i id="pendN"></i><div class="ctl"><span>!</span></div></div><div class="wb" id="pending"></div></div>
+</div>
+
+<div class="side r" id="sideR">
+ <div class="win"><div class="wh">SİSTEM TELEMETRİYASI<i>SERVER</i><div class="ctl"><span>◉</span></div></div><div class="wb" id="tele"></div></div>
+ <div class="win"><div class="wh">FƏALİYYƏT JURNALI<i>LOG</i><div class="ctl"><span>⤢</span></div></div><div class="wb log" id="activity"></div></div>
+ <div class="win"><div class="wh">TAPŞIRIQ · RUTİN · XATIRLATMA<div class="ctl"><span>+</span></div></div><div class="wb" id="tasks"></div></div>
+</div>
+
+<div class="center">
+ <form id="f"><span>&gt;</span><input id="q" placeholder="komanda verin…" autocomplete="off" enterkeyhint="send">
+  <button type="button" class="mic" id="mic" aria-label="Danış"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  <button class="send" aria-label="Göndər"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></form>
+ <div class="hint">NÜVƏNİ VƏ YA MİKROFONU BASIB SAXLAYIN — DANIŞIN</div>
+</div>
+
+<script>
+const T="__TOKEN__",$=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* ===== səs effektləri (WebAudio, fayl yoxdur) ===== */
+let AC=null,master=null;
+function ac(){if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.35;master.connect(AC.destination)}return AC}
+function beep(f=880,d=.06,type='sine',v=.15,slide=0){try{const a=ac(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;
+if(slide)o.frequency.exponentialRampToValueAtTime(f*slide,a.currentTime+d);g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);
+o.connect(g);g.connect(master);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function hum(){try{const a=ac(),o=a.createOscillator(),o2=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();
+o.type='sawtooth';o.frequency.value=55;o2.type='sine';o2.frequency.value=110.5;lp.type='lowpass';lp.frequency.value=320;g.gain.value=0;
+o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(master);o.start();o2.start();g.gain.linearRampToValueAtTime(.05,a.currentTime+2.5);
+beep(220,1.2,'sine',.12,4)}catch(e){}}
+/* ===== audio analizator (halqa səsə reaksiya verir) ===== */
+let analyser=null,level=0,abuf=null;
+function attach(node){const a=ac();analyser=a.createAnalyser();analyser.fftSize=256;abuf=new Uint8Array(analyser.frequencyBinCount);node.connect(analyser)}
+function readLevel(){if(!analyser)return 0;analyser.getByteFrequencyData(abuf);let s=0;for(let i=2;i<40;i++)s+=abuf[i];return Math.min(1,s/(38*170))}
+/* ===== tema ===== */
+let theme='blue';try{theme=localStorage.getItem('jv_theme')||'blue'}catch(e){}
+function applyTheme(){document.documentElement.dataset.theme=theme==='blue'?'blue':'';
+const cs=getComputedStyle(document.documentElement);PAL.rgb=cs.getPropertyValue('--rgb').trim();PAL.gold=cs.getPropertyValue('--gold').trim();PAL.bg=cs.getPropertyValue('--bg').trim();
+document.querySelector('meta[name=theme-color]').content=PAL.bg}
+const PAL={};
+$('themeBtn').onclick=()=>{theme=theme==='blue'?'green':'blue';try{localStorage.setItem('jv_theme',theme)}catch(e){}applyTheme();beep(700,.06)};
+/* ===== vizual: axınlar + hissəciklər + nüvə + modul şəbəkəsi ===== */
+const cv=$('fx'),cx=cv.getContext('2d');let W,H,DPR,CX,CY,R,mob,RX,RY;
+function size(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);
+mob=W<980;CX=W/2;
+if(mob){R=Math.min(W*.2,110);CY=Math.min(W*.49,280)+90;RX=W*.40;RY=Math.min(W*.42,250)}
+else{const free=W-2*Math.min(340,W*.26)-80;R=Math.min(free*.16,H*.13);CY=H*.43;RX=Math.min(free*.47,R*3.3);RY=Math.min(H*.3,R*2.5)}}
+addEventListener('resize',size);
+const NODES=[['ARAŞDIRMA',['web_search','web_fetch']],['YADDAŞ',['memory_save','memory_search','memory_get']],['ANALİTİKA',['code_execution']],
+['GMAIL',['gmail_search','gmail_read','gmail_send','gmail_mark'],'GMAIL'],['TƏQVİM',['calendar_list','calendar_create','calendar_delete'],'CALENDAR'],
+['SƏNƏDLƏR',['drive_search','drive_read','doc_create'],'DRIVE'],['TAPŞIRIQLAR',['task_add','task_list','task_update']],
+['AVTOMATLAŞDIRMA',['routine_add','routine_list','routine_delete','reminder_add','reminder_list','reminder_delete']],
+['HESABAT',['activity_log','system_status']],['VİDEO',['video_task'],'YOUTUBE'],['SAYTLAR',['site_task']],
+['TELEGRAM',[],'TELEGRAM'],['TELEFON',[],'ELEVENLABS'],['REKLAM',[],'__soon']].map((n,i,arr)=>({name:n[0],tools:n[1],mod:n[2],
+a:-Math.PI/2+i/arr.length*Math.PI*2+(i%2?.12:-.12),k:i%2?1.0:.82,heat:0,on:true,sat:[Math.random()*2-1,Math.random()*2-1]}));
+const toolMap={};NODES.forEach(n=>n.tools.forEach(t=>toolMap[t]=n));
+const P=[];for(let i=0;i<(innerWidth<980?110:240);i++)P.push({x:Math.random(),y:Math.random(),z:Math.random(),s:Math.random()*1.8+.3,p:Math.random()*6.28});
+const STREAMS=[];for(let i=0;i<(innerWidth<980?5:9);i++)STREAMS.push({y0:Math.random(),y1:Math.random(),c1:Math.random(),c2:Math.random(),sp:.2+Math.random()*.6,off:Math.random()*100});
+let mode='idle',t=0,amp=.2,spin=0,flashT=0,px=0,py=0,bootT=0,booted=false,pulses=[];
+addEventListener('pointermove',e=>{px=(e.clientX/W-.5);py=(e.clientY/H-.5)});
+const N=(a,t,k)=>Math.sin(a*3+t*1.3+k)*.5+Math.sin(a*7-t*2.1+k*2)*.3+Math.sin(a*13+t*3.7-k)*.2;
+const rgba=(a,rgb=PAL.rgb)=>`rgba(${rgb},${a})`;
+function nodePos(n,e){const f=e*(n.k);return [CX+Math.cos(n.a)*RX*f,CY+Math.sin(n.a)*RY*f]}
+function fire(n){n.heat=1;pulses.push({n,p:0,out:false});beep(1300+Math.random()*500,.03,'sine',.03)}
+let lastF=performance.now();
+function frame(now){now=now||performance.now();const dt=Math.min(.05,(now-lastF)/1000);lastF=now;const F=dt*60;t+=dt;const live=readLevel();level+=(live-level)*Math.min(1,.35*F);
+if(booted&&bootT<1)bootT=Math.min(1,bootT+dt*.75);const e1=Math.min(1,bootT*2),e2=Math.max(0,Math.min(1,(bootT-.35)/.65));
+const ease=x=>1-Math.pow(1-x,3);const ringA=ease(e1),netE=ease(e2);
+const base={idle:.22,listen:.55,think:.5,speak:.45,error:.6}[mode]||.22;amp+=((base+level*1.3)-amp)*Math.min(1,.08*F);spin+=(mode==='think'?.03:.006)*F;
+cx.globalCompositeOperation='source-over';cx.fillStyle=PAL.bg;cx.fillRect(0,0,W,H);
+cx.globalCompositeOperation='lighter';
+// arxa fon məlumat axınları
+cx.lineWidth=1;for(const s of STREAMS){cx.strokeStyle=rgba(.07);cx.beginPath();const y0=s.y0*H,y1=s.y1*H;
+cx.moveTo(-50,y0);cx.bezierCurveTo(W*.33,s.c1*H+Math.sin(t*.3+s.off)*40,W*.66,s.c2*H-Math.sin(t*.25+s.off)*40,W+50,y1);cx.stroke();
+cx.setLineDash([2,26]);cx.lineDashOffset=-(t*60*s.sp+s.off);cx.strokeStyle=rgba(.35);cx.lineWidth=1.6;cx.stroke();cx.setLineDash([]);cx.lineWidth=1}
+// hissəciklər
+for(const p of P){p.y-=(.0003+p.z*.001)*(1+amp*2)*F;p.x+=Math.sin(t*.3+p.p)*.0003*F;if(p.y<-.02){p.y=1.02;p.x=Math.random()}
+const x=p.x*W+px*40*p.z,y=p.y*H+py*40*p.z;cx.fillStyle=rgba((.12+p.z*.5)*(.6+.4*Math.sin(t*2+p.p)));cx.beginPath();cx.arc(x,y,p.s*(.5+p.z)*(1+level*.8),0,7);cx.fill()}
+// modul şəbəkəsi
+if(netE>0){cx.font=`600 ${mob?8.5:10}px "JetBrains Mono",monospace`;cx.textAlign='center';
+for(const n of NODES){const [x,y]=nodePos(n,netE);n.heat=Math.max(0,n.heat-dt*.5);const hot=n.heat;const dim=!n.on;
+const sx=CX+Math.cos(n.a)*R*1.25,sy=CY+Math.sin(n.a)*R*1.25,mx=(sx+x)/2+Math.sin(n.a)*18,my=(sy+y)/2-Math.cos(n.a)*18;
+cx.strokeStyle=hot>.05?`rgba(255,216,77,${.25+hot*.6})`:rgba(dim?.08:.22);cx.lineWidth=hot>.05?1.6:1;cx.beginPath();cx.moveTo(sx,sy);cx.quadraticCurveTo(mx,my,x,y);cx.stroke();
+// peyk nöqtələr
+for(let k=0;k<2;k++){const ax=x+Math.cos(n.a+n.sat[k])*(mob?16:26),ay=y+Math.sin(n.a+n.sat[k])*(mob?14:22);cx.strokeStyle=rgba(dim?.06:.18);cx.beginPath();cx.moveTo(x,y);cx.lineTo(ax,ay);cx.stroke();
+cx.fillStyle=rgba(dim?.15:.5);cx.beginPath();cx.arc(ax,ay,1.6,0,7);cx.fill()}
+// qovşaq
+const col=hot>.05?`255,216,77`:PAL.rgb;cx.shadowColor=hot>.05?'#ffd84d':`rgb(${PAL.rgb})`;cx.shadowBlur=hot>.05?25:10;
+cx.fillStyle=`rgba(${col},${dim?.25:.9})`;cx.beginPath();cx.arc(x,y,(mob?3.5:4.5)+hot*3,0,7);cx.fill();
+cx.strokeStyle=`rgba(${col},${dim?.2:.6})`;cx.lineWidth=1.2;cx.beginPath();cx.arc(x,y,(mob?7:9)+Math.sin(t*3+n.a)*1.2+hot*5,0,7);cx.stroke();cx.shadowBlur=0;
+cx.fillStyle=hot>.05?'rgba(255,230,140,.95)':rgba(dim?.3:.8);const ly=y+(Math.sin(n.a)>0?(mob?17:21):(mob?-11:-14));cx.fillText(n.name+(n.mod==='__soon'?' ·SOON':''),x,ly)}
+// impulslar
+pulses=pulses.filter(q=>q.p<=1);for(const q of pulses){q.p+=dt*1.2;const [x,y]=nodePos(q.n,netE);const sx=CX+Math.cos(q.n.a)*R*1.25,sy=CY+Math.sin(q.n.a)*R*1.25;
+const k=q.p,mx=(sx+x)/2+Math.sin(q.n.a)*18,my=(sy+y)/2-Math.cos(q.n.a)*18;const u=1-k;
+const qx=u*u*x+2*u*k*mx+k*k*sx,qy=u*u*y+2*u*k*my+k*k*sy;cx.fillStyle='rgba(255,230,140,.95)';cx.shadowColor='#ffd84d';cx.shadowBlur=20;cx.beginPath();cx.arc(qx,qy,3,0,7);cx.fill();cx.shadowBlur=0}}
+// nüvə parıltısı
+let g=cx.createRadialGradient(CX,CY,0,CX,CY,R*2.2);g.addColorStop(0,rgba((.10+amp*.14)*ringA));g.addColorStop(.6,rgba(.03*ringA));g.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=g;cx.beginPath();cx.arc(CX,CY,R*2.2,0,7);cx.fill();
+// daxili sfera (şəbəkə toru)
+cx.save();cx.beginPath();cx.arc(CX,CY,R*.93,0,7);cx.clip();cx.strokeStyle=rgba(.16*ringA);cx.lineWidth=.8;
+for(let i=-4;i<=4;i++){const yy=CY+i*R*.2;const w=Math.sqrt(Math.max(0,1-(i*.2)**2))*R*.93;cx.beginPath();cx.ellipse(CX,yy,w,w*.18,0,0,7);cx.stroke()}
+for(let i=0;i<8;i++){const a=spin*2+i*Math.PI/8;cx.beginPath();cx.ellipse(CX,CY,Math.abs(Math.cos(a))*R*.93,R*.93,0,0,7);cx.stroke()}
+g=cx.createRadialGradient(CX-R*.3,CY-R*.3,0,CX,CY,R);g.addColorStop(0,rgba(.35*ringA));g.addColorStop(1,rgba(.04*ringA));cx.fillStyle=g;cx.fillRect(CX-R,CY-R,R*2,R*2);cx.restore();
+// orbit halqaları
+for(let i=1;i<=3;i++){const rr=R*(1.08+i*.11);cx.strokeStyle=rgba((.1+i*.04)*ringA);cx.setLineDash(i%2?[2,7]:[22,10]);cx.lineDashOffset=(i%2?1:-1)*t*20*i;cx.beginPath();cx.arc(CX,CY,rr,0,7);cx.stroke()}cx.setLineDash([]);
+// radar
+if(cx.createConicGradient){g=cx.createConicGradient(t*1.1,CX,CY);g.addColorStop(0,rgba(.2*ringA));g.addColorStop(.08,rgba(0));g.addColorStop(1,rgba(0));cx.fillStyle=g;cx.beginPath();cx.arc(CX,CY,R*1.45,0,7);cx.fill()}
+// əsas plazma halqası (qızılı / tema rəngi)
+const ringRGB=theme==='blue'?'255,216,77':PAL.rgb;const L=mob?140:220;
+for(let k=0;k<4;k++){cx.beginPath();for(let i=0;i<=L;i++){const a=i/L*Math.PI*2;const r=R+N(a,t*(1+k*.15),k)*(3+k*2.5)*(.6+amp*2.2)+Math.sin(a*9+t*6)*level*14;
+const x=CX+r*Math.cos(a),y=CY+r*Math.sin(a);i?cx.lineTo(x,y):cx.moveTo(x,y)}
+cx.strokeStyle=k?`rgba(${ringRGB},${(.3-k*.06)*ringA})`:`rgba(255,248,220,${.7*ringA})`;cx.lineWidth=k?3-k*.5:2.6;cx.shadowColor=`rgb(${ringRGB})`;cx.shadowBlur=mob?(k?10:16):(k?22:34);cx.stroke()}
+for(let j=0;j<2;j++){const a0=t*.8+j*Math.PI;cx.beginPath();cx.arc(CX,CY,R+N(a0,t,0)*4,a0-.4,a0+.4);cx.strokeStyle=`rgba(255,250,235,${(.5+amp*.4)*ringA})`;cx.lineWidth=3.5+amp*3;cx.shadowBlur=40;cx.stroke()}cx.shadowBlur=0;
+// bölgü və fırlanan mətn
+cx.save();cx.translate(CX,CY);cx.rotate(-spin*.6);for(let i=0;i<120;i++){cx.rotate(Math.PI*2/120);const big=i%10===0;cx.fillStyle=big?`rgba(235,250,255,${.8*ringA})`:rgba(.35*ringA);cx.fillRect(R*1.5,-.6,big?12:5,1.2)}cx.restore();
+cx.save();cx.translate(CX,CY);cx.rotate(spin*.8);cx.font=`600 ${mob?7:9}px "JetBrains Mono",monospace`;cx.textAlign='left';cx.fillStyle=rgba(.5*ringA);
+const txt=' NEURAL CORE ◆ JARVIS ONLINE ◆ '.repeat(mob?2:3);const st=Math.PI*2/txt.length;for(let i=0;i<txt.length;i++){cx.save();cx.rotate(i*st);cx.translate(0,-R*1.65);cx.fillText(txt[i],0,0);cx.restore()}cx.restore();
+// nüvə
+const cr=R*.12*(1+amp*.6+Math.sin(t*4)*.04);g=cx.createRadialGradient(CX,CY,0,CX,CY,cr*3);g.addColorStop(0,`rgba(255,255,255,${.95*ringA})`);g.addColorStop(.3,rgba(.6*ringA));g.addColorStop(1,rgba(0));cx.fillStyle=g;cx.beginPath();cx.arc(CX,CY,cr*3,0,7);cx.fill();
+if(mode==='think'){for(let i=0;i<6;i++){const a=t*3+i*1.047,r=R*.7;cx.fillStyle='rgba(255,236,170,.9)';cx.beginPath();cx.arc(CX+r*Math.cos(a),CY+r*Math.sin(a),2.3,0,7);cx.fill()}
+if(Math.random()<dt*2.4)fire(NODES[(Math.random()*NODES.length)|0])}
+if(flashT>0){cx.globalCompositeOperation='source-over';cx.fillStyle=rgba(Math.min(.3,flashT*.2));cx.fillRect(0,0,W,H);flashT-=dt*3}
+drawWave();requestAnimationFrame(frame)}
+// dalğa formalı göstərici
+const wv=$('wave'),wx=wv.getContext('2d');
+function drawWave(){wx.clearRect(0,0,360,52);const n=36;for(let i=0;i<n;i++){let v;if(analyser&&abuf){v=abuf[2+i]/255}else{v=(mode==='idle'?.06:.25)*(.5+.5*Math.sin(t*6+i*.7))*(1+Math.sin(t*2.3+i))}
+const h=Math.max(2,v*46);wx.fillStyle=mode==='listen'||mode==='speak'?`rgba(255,216,77,.9)`:rgba(.7);wx.fillRect(i*10+2,26-h/2,5,h)}}
+applyTheme();size();frame();
+/* ===== saat, glitch ===== */
+setInterval(()=>{const d=new Date();$('clk').textContent=d.toLocaleTimeString('az-AZ',{timeZone:'Asia/Baku',hour12:false});
+const b=new Date(d.getTime()+(d.getTimezoneOffset()+240)*60000);$('dte').textContent=`${['BAZAR','BAZAR ERTƏSİ','ÇƏRŞƏNBƏ AXŞAMI','ÇƏRŞƏNBƏ','CÜMƏ AXŞAMI','CÜMƏ','ŞƏNBƏ'][b.getDay()]} · ${b.getDate()} ${['YANVAR','FEVRAL','MART','APREL','MAY','İYUN','İYUL','AVQUST','SENTYABR','OKTYABR','NOYABR','DEKABR'][b.getMonth()]}`},500);
+setInterval(()=>{const l=$('logo');l.classList.add('glitch');setTimeout(()=>l.classList.remove('glitch'),140)},4200);
+/* ===== vəziyyət ===== */
+const STATES={idle:'GÖZLƏMƏ REJİMİ',listen:'◉ DİNLƏYİRƏM',think:'◆ ANALİZ EDİLİR',speak:'▶ CAVAB VERİRƏM',error:'⚠ XƏTA'};
+function setMode(m){mode=m;$('state').textContent=STATES[m];$('sysState').textContent=m==='idle'?'ONLINE':STATES[m].replace(/^[^A-ZƏ]+/,'');
+if(m==='listen')beep(1200,.08,'square',.06);if(m==='think')beep(660,.15,'sine',.08,1.5)}
+function typeOut(el,text,you){el.innerHTML=(you?`<span class="you">› ${esc(you)}</span>`:'');const span=document.createElement('span');const cur=document.createElement('i');cur.className='cursor';
+el.appendChild(span);el.appendChild(cur);let i=0;const step=Math.max(1,Math.round(text.length/220));
+(function go(){if(i<text.length){i+=step;span.textContent=text.slice(0,i);el.scrollTop=1e9;if(i%9===0)beep(1800+Math.random()*600,.012,'square',.02);setTimeout(go,14)}else cur.remove()})()}
+let player=null;
+function play(b64,text,you){typeOut($('reply'),text,you);flashT=1;
+if(!b64){setMode('idle');return}const a=new Audio('data:audio/mpeg;base64,'+b64);player=a;
+try{const src=ac().createMediaElementSource(a);attach(src);src.connect(master)}catch(e){}
+setMode('speak');a.onended=()=>{analyser=null;setMode('idle')};a.play().catch(()=>setMode('idle'))}
+/* ===== mətn ===== */
+$('f').onsubmit=async e=>{e.preventDefault();const v=$('q').value.trim();if(!v)return;$('q').value='';beep(900,.05);setMode('think');
+$('reply').innerHTML=`<span class="you">› ${esc(v)}</span><span class="cursor"></span>`;
+try{const r=await fetch('/api/jarvis/chat?t='+T,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:v,speak:true})});
+const j=await r.json();play(j.audio,j.reply,v);load()}catch(err){setMode('error');typeOut($('reply'),'Bağlantı xətası: '+err)}};
+/* ===== səs: basıb saxla ===== */
+let rec,chunks=[],stream;
+async function startRec(){if(rec&&rec.state==='recording')return;try{if(player)player.pause();stream=await navigator.mediaDevices.getUserMedia({audio:true});
+try{attach(ac().createMediaStreamSource(stream))}catch(e){}
+const type=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'audio/mp4';rec=new MediaRecorder(stream,{mimeType:type});chunks=[];
+rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());analyser=null;$('mic').classList.remove('rec');setMode('think');
+const fd=new FormData();fd.append('file',new Blob(chunks,{type}),'voice.'+(type.includes('webm')?'webm':'m4a'));
+try{const r=await fetch('/api/jarvis/voice?t='+T,{method:'POST',body:fd});const j=await r.json();play(j.audio,j.reply,j.heard);load()}
+catch(err){setMode('error');typeOut($('reply'),'Bağlantı xətası: '+err)}};rec.start();$('mic').classList.add('rec');setMode('listen')}
+catch(e){setMode('error');typeOut($('reply'),'Mikrofona icazə verin (brauzer ayarları).')}}
+function stopRec(){if(rec&&rec.state==='recording')rec.stop()}
+const mic=$('mic');mic.addEventListener('pointerdown',e=>{e.preventDefault();startRec()});['pointerup','pointerleave','pointercancel'].forEach(ev=>mic.addEventListener(ev,stopRec));
+cv.addEventListener('pointerdown',e=>{if(Math.hypot(e.clientX-CX,e.clientY-CY)<R*1.1){e.preventDefault();startRec()}});
+addEventListener('pointerup',stopRec);
+/* ===== məlumatlar ===== */
+function countTo(el,v){if(v==null||v==='–'){el.textContent='–';return}const s=+el.textContent||0,e=+v,t0=performance.now();
+(function st(n){const k=Math.min(1,(n-t0)/700);el.textContent=Math.round(s+(e-s)*k);if(k<1)requestAnimationFrame(st)})(t0)}
+async function decide(id,ok){beep(ok?1000:300,.1);const r=await fetch('/api/jarvis/approve?t='+T,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,ok})});
+typeOut($('reply'),(await r.json()).message);load()}
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+async function load(){const r=await fetch('/api/jarvis/overview?t='+T);if(!r.ok)return null;const d=await r.json();
+countTo($('sUnread'),d.unread??'–');countTo($('sTasks'),d.tasks.length);countTo($('sActs'),d.today_actions);
+const today=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Baku'});countTo($('sEvents'),d.google?d.events.filter(e=>String(e.start).startsWith(today)).length:'–');
+$('events').innerHTML=!d.google?'<div class="empty">// Google qoşulmayıb — setup səhifəsi</div>':
+(d.events.map(e=>`<div class="row"><span class="t">${esc(String(e.start).slice(11,16)||'GÜN')}</span><span class="s">${esc(e.title)}<small>${String(e.start).slice(0,10)===today?'bu gün':'sabah'}${e.attendees.length?' · '+e.attendees.length+' iştirakçı':''}</small></span><span class="tag">${e.link&&String(e.link).includes('meet')?'MEET':'GÖRÜŞ'}</span></div>`).join('')||'<div class="empty">// yaxın 2 gündə görüş yoxdur</div>');
+$('pendN').textContent=d.pending.length?d.pending.length+' ƏDƏD':'';
+$('pending').innerHTML=d.pending.map(p=>`<div class="row" style="grid-template-columns:1fr"><span class="s" style="white-space:pre-wrap">${esc(p.summary.slice(0,320))}</span><div class="btns"><button onclick="decide(${p.id},true)">TƏSDİQLƏ</button><button class="no" onclick="decide(${p.id},false)">LƏĞV</button></div></div>`).join('')||'<div class="empty">// gözləyən əməliyyat yoxdur</div>';
+$('activity').innerHTML=d.activity.map(a=>`<div class="ln"><b>[${esc(a.t.slice(6))}]</b> ${esc(a.kind.toUpperCase())} › ${esc(a.summary)}</div>`).join('')||'<div class="empty">// jurnal boşdur</div>';
+$('tasks').innerHTML=(d.tasks.map(t=>`<div class="row"><span class="t">${t.priority==='yüksək'?'!!':'☐'}</span><span class="s">${esc(t.title)}<small>${esc(t.due||'')} ${esc(t.owner||'')}</small></span><span class="tag">TASK</span></div>`).join(''))
++d.routines.map(r=>`<div class="row"><span class="t">↻</span><span class="s">${esc(r.name)}<small>${esc(r.schedule)}</small></span><span class="tag">AUTO</span></div>`).join('')
++d.reminders.map(r=>`<div class="row"><span class="t">${esc(r.at)}</span><span class="s">${esc(r.text)}</span><span class="tag">ALARM</span></div>`).join('')||'<div class="empty">// boşdur</div>';
+const s=d.sys||{},m=d.modules||{};NODES.forEach(n=>{n.on=n.mod==='__soon'?false:(n.mod?!!m[n.mod]:true)});
+$('tele').innerHTML=`<div class="kv"><span>CPU YÜKÜ</span><b>${s.load??'–'}</b></div><div class="bar"><div style="width:${Math.min(100,pct(s.load||0,s.cpus||1))}%"></div></div>
+<div class="kv"><span>YADDAŞ</span><b>${s.mem_used??'–'} / ${s.mem_total??'–'} GB</b></div><div class="bar"><div style="width:${pct(s.mem_used,s.mem_total)}%"></div></div>
+<div class="kv"><span>DİSK</span><b>${s.disk_used??'–'} / ${s.disk_total??'–'} GB</b></div><div class="bar"><div style="width:${pct(s.disk_used,s.disk_total)}%"></div></div>
+<div class="kv"><span>İŞ VAXTI</span><b>${esc(s.uptime??'–')}</b></div><div class="kv"><span>YADDAŞ QEYDLƏRİ</span><b>${s.memories??0}</b></div>
+<div class="mods">${Object.entries(m).map(([k,v])=>`<div class="${v?'':'off'}"><span class="dot"></span>${esc(k)}</div>`).join('')}</div>`;
+return d}
+/* ===== açılış ===== */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function boot(){const L=$('bootlog');const out=async(s,ms=90)=>{L.textContent+=s+'\n';await sleep(ms)};
+await out('> JARVIS NEURAL CORE v2.0',200);await out('> nüvə başladılır ........................ OK');
+const d=await load().catch(()=>null);const m=(d&&d.modules)||{};
+for(const [k,v] of Object.entries(m))await out(`> ${k.padEnd(16,'.')}..................... ${v?'QOŞULUB':'GÖZLƏYİR'}`,110);
+await out(`> yaddaş qeydləri ........................ ${(d&&d.sys&&d.sys.memories)||0}`);await out(`> aktiv rutinlər ......................... ${d?d.routines.length:0}`);
+await out('> təhlükəsizlik protokolu ................ AKTİV');await out('\nSİSTEM HAZIRDIR.',300);const gb=$('go');if(gb)gb.style.opacity=1}
+$('go').onclick=()=>{hum();booted=true;const b=$('boot');b.style.opacity=0;setTimeout(()=>b.remove(),800);flashT=1.4;
+document.querySelectorAll('.win').forEach((w,i)=>setTimeout(()=>{w.classList.add('on');beep(500+i*120,.05,'square',.04)},300+i*160));
+setTimeout(()=>typeOut($('reply'),'Salam, patron. Bütün sistemlər işləkdir. Nə edək?'),1400)};
+boot();setInterval(load,30000);
+const seenLive=new Set();
+async function pollLive(){try{const r=await fetch('/api/jarvis/live?t='+T);if(r.ok){const d=await r.json();
+for(const e of d.events){const key=e.tool+'@'+Math.round((Date.now()/1000-e.ago)*10);if(seenLive.has(key))continue;seenLive.add(key);
+const n=toolMap[e.tool];if(n)fire(n);if(e.tool==='core'){flashT=.4}}}}catch(e){}setTimeout(pollLive,1000)}
+pollLive();
+</script></body></html>
