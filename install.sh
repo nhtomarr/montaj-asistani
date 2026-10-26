@@ -6,6 +6,12 @@ REPO="${REPO:-https://github.com/nhtomarr/montaj-asistani.git}"
 DIR=/opt/montaj-asistani
 export DEBIAN_FRONTEND=noninteractive
 
+# Kiçik serverlərdə uzun render üçün swap
+if [ ! -f /swapfile ] && [ "$(free -m | awk '/Mem:/{print $2}')" -lt 7000 ]; then
+  fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
 apt-get update -y
 apt-get install -y git curl ca-certificates openssl
 command -v docker >/dev/null 2>&1 || curl -fsSL https://get.docker.com | sh
