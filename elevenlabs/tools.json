@@ -1,0 +1,32 @@
+[
+  {
+    "type": "webhook",
+    "name": "tapshiriq_ver",
+    "description": "İstifadəçinin video montaj / Reels / YouTube / Instagram tapşırığını montaj serverinə göndərir. Tapşırıq aydın olan kimi çağır.",
+    "api_schema": {
+      "url": "https://asistan.pilothayat.az/api/agent/task",
+      "method": "POST",
+      "request_headers": { "X-Agent-Secret": "<AGENT_TOOL_SECRET>" },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "instruction": { "type": "string", "description": "İstifadəçinin tapşırığı, onun öz sözləri ilə, tam" },
+          "caller_id": { "type": "string", "description": "Zəng edənin nömrəsi", "dynamic_variable": "system__caller_id" }
+        },
+        "required": ["instruction"]
+      }
+    },
+    "response_timeout_secs": 30
+  },
+  {
+    "type": "webhook",
+    "name": "status_yoxla",
+    "description": "Son montaj tapşırığının vəziyyətini və hazır linkləri qaytarır.",
+    "api_schema": {
+      "url": "https://asistan.pilothayat.az/api/agent/status",
+      "method": "GET",
+      "request_headers": { "X-Agent-Secret": "<AGENT_TOOL_SECRET>" }
+    },
+    "response_timeout_secs": 15
+  }
+]

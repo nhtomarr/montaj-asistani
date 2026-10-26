@@ -1,0 +1,45 @@
+services:
+  telegram-bot-api:
+    # Öz Telegram Bot API serverimiz: 2 GB-a qədər video qəbul etmək üçün
+    image: aiogram/telegram-bot-api:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+      - data/setup.env
+    environment:
+      TELEGRAM_LOCAL: "1"
+    volumes:
+      - tgdata:/var/lib/telegram-bot-api
+
+  app:
+    build: ./app
+    restart: unless-stopped
+    env_file:
+      - .env
+      - data/setup.env
+    environment:
+      DATA_DIR: /data
+      TELEGRAM_API_BASE: http://telegram-bot-api:8081
+    volumes:
+      - ./data:/data
+      - tgdata:/var/lib/telegram-bot-api:ro
+    depends_on:
+      - telegram-bot-api
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - app
+
+volumes:
+  tgdata:
+  caddy_data:

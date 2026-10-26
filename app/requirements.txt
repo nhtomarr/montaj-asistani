@@ -1,0 +1,9 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+httpx==0.28.1
+python-telegram-bot==21.9
+google-api-python-client==2.155.0
+google-auth==2.37.0
+# Yerli Whisper istəsəniz (STT_PROVIDER=local), aşağıdakını açın:
+# faster-whisper==1.1.0
