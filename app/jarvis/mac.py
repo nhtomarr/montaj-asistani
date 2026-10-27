@@ -107,6 +107,13 @@ AGENT = r'''#!/bin/zsh
 # Jarvis Mac köməkçisi — serverdən əmr alır, icra edir, nəticəni qaytarır.
 SERVER="__SERVER__"; KEY="__KEY__"; DIR="$HOME/.jarvis"; MOV="$HOME/Movies/Jarvis"
 mkdir -p "$DIR" "$MOV"
+if [[ ! -f "$DIR/.perm" ]]; then  # ilk işə düşəndə macOS icazə pəncərələrini bir dəfə çıxart
+  touch "$DIR/.perm"
+  ( sleep 3; osascript -e 'tell application "Contacts" to count people'
+    osascript -e 'tell application "System Events" to keystroke ""'
+    screencapture -x "$DIR/test.png"
+    osascript -e 'display notification "Jarvis bu Mac-ə qoşuldu" with title "JARVIS" sound name "Glass"' ) >/dev/null 2>&1 &
+fi
 NAME=$(scutil --get ComputerName 2>/dev/null | tr ' ' '_')
 reply() { # id ok text [file]
   if [[ -n "$4" ]]; then curl -fsS -m 60 -F "id=$1" -F "ok=$2" -F "text=$3" -F "file=@$4" "$SERVER/api/mac/result?k=$KEY" >/dev/null
@@ -126,7 +133,7 @@ run() { # id action arg
       out=${out:-"video ekranda oynayır: $f"} ;;
     play_audio) f="$DIR/say.mp3"; curl -fsSL -m 60 -o "$f" "$arg" && afplay "$f" && out="səsləndirildi" || { ok=0; out="səs alınmadı"; } ;;
     screenshot) f="$DIR/shot.png"; rm -f "$f"; screencapture -x "$f" 2>/dev/null
-      if [[ -s "$f" ]]; then reply $id 1 "ekran şəkli" "$f"; return; else ok=0; out="Ekran şəkli alınmadı — Sistem Ayarları → Məxfilik → Ekran qeydi icazəsi lazımdır"; fi ;;
+      if [[ -s "$f" ]]; then reply $id 1 "ekran şəkli" "$f"; return; else ok=0; out="Ekran şəkli alınmadı — Sistem Ayarları → Gizlilik → Ekran Kaydı bölməsinə Jarvis.app əlavə edin"; fi ;;
     notify) out=$(osascript -e "display notification \"$arg\" with title \"JARVIS\" sound name \"Glass\"" 2>&1) || ok=0; out=${out:-"bildiriş göstərildi"} ;;
     volume) out=$(osascript -e "set volume output volume $arg" 2>&1) || ok=0; out=${out:-"səs $arg%"} ;;
     media) case $arg in
@@ -145,7 +152,7 @@ run() { # id action arg
       enc=$(JTEXT="$text" osascript -l JavaScript -e 'ObjC.import("stdlib"); encodeURIComponent($.getenv("JTEXT"))')
       if ! open "whatsapp://send?phone=$phone&text=$enc" 2>/dev/null; then ok=0; out="WhatsApp Desktop quraşdırılmayıb (App Store-dan yükləyin)"
       else sleep 4; osascript -e 'tell application "WhatsApp" to activate' -e 'delay 0.8' -e 'tell application "System Events" to key code 36' >/dev/null 2>&1 \
-        && out="göndərildi: +$phone" || { ok=0; out="Mesaj yazıldı, amma Enter basıla bilmədi — Sistem Ayarları → Məxfilik → Əlçatanlıq bölməsində zsh/osascript-ə icazə verin"; }; fi ;;
+        && out="göndərildi: +$phone" || { ok=0; out="Mesaj yazıldı, amma Enter basıla bilmədi — Sistem Ayarları → Gizlilik → Erişilebilirlik bölməsinə Jarvis.app əlavə edin"; }; fi ;;
     update) curl -fsSL "$SERVER/mac/install?k=$KEY" | JV_UPDATE=1 zsh >/dev/null 2>&1 && reply $id 1 "yeniləndi, yenidən başlayır" || reply $id 0 "yenilənmədi"
       kill $$; return ;;
     shell) out=$(cd ~ && /bin/zsh -lc "$arg" 2>&1 | tail -c 5000); ok=$([[ ${pipestatus[1]} == 0 ]] && echo 1 || echo 0) ;;
@@ -166,29 +173,41 @@ done
 
 INSTALL = r'''#!/bin/zsh
 set -e
-DIR="$HOME/.jarvis"; PL="$HOME/Library/LaunchAgents/az.jarvis.agent.plist"
-mkdir -p "$DIR" "$HOME/Library/LaunchAgents"
+DIR="$HOME/.jarvis"; PL="$HOME/Library/LaunchAgents/az.jarvis.agent.plist"; APP="$HOME/Applications/Jarvis.app"
+mkdir -p "$DIR" "$HOME/Library/LaunchAgents" "$HOME/Applications"
 cat > "$DIR/agent.zsh" <<'JARVIS_AGENT_EOF'
 __AGENT__
 JARVIS_AGENT_EOF
 chmod +x "$DIR/agent.zsh"
+[[ -n "$JV_UPDATE" ]] && exit 0
+# macOS icazələri (Kontaktlar, WhatsApp, ekran) arxa fon skriptinə yox, tətbiqə verilir — ona görə kiçik Jarvis.app
+rm -rf "$APP"
+osacompile -o "$APP" -e 'do shell script "/bin/zsh $HOME/.jarvis/agent.zsh > /dev/null 2>&1"'
+IP="$APP/Contents/Info.plist"
+plutil -replace CFBundleIdentifier -string az.jarvis.helper "$IP"
+plutil -replace CFBundleName -string Jarvis "$IP"
+plutil -replace LSUIElement -bool true "$IP"
+plutil -replace NSAppleEventsUsageDescription -string "Jarvis sizin əmrinizlə proqramları idarə edir (WhatsApp, QuickTime, Kontaktlar)." "$IP"
+plutil -replace NSContactsUsageDescription -string "Jarvis mesaj göndərmək üçün kontaktın nömrəsini tapır." "$IP"
+codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+rm -f "$DIR/.perm"
 cat > "$PL" <<PLIST_EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>az.jarvis.agent</string>
-<key>ProgramArguments</key><array><string>/bin/zsh</string><string>$DIR/agent.zsh</string></array>
+<key>ProgramArguments</key><array><string>$APP/Contents/MacOS/applet</string></array>
 <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
 <key>StandardErrorPath</key><string>$DIR/agent.log</string>
 </dict></plist>
 PLIST_EOF
-[[ -n "$JV_UPDATE" ]] && exit 0
+pkill -f "$DIR/agent.zsh" 2>/dev/null || true
 launchctl bootout gui/$(id -u)/az.jarvis.agent 2>/dev/null || true
+sleep 1
 launchctl bootstrap gui/$(id -u) "$PL"
-screencapture -x "$DIR/test.png" 2>/dev/null || true
-osascript -e 'display notification "Jarvis bu Mac-ə qoşuldu" with title "JARVIS" sound name "Glass"' || true
 echo ""
-echo "✅ Jarvis köməkçisi quraşdırıldı və işə düşdü."
-echo "   Ekran şəkli üçün: Sistem Ayarları → Məxfilik və Təhlükəsizlik → Ekran qeydi — 'zsh'/'Terminal'-a icazə verin."
-echo "   Silmək üçün: launchctl bootout gui/\$(id -u)/az.jarvis.agent; rm -rf ~/.jarvis $PL"
+echo "✅ Jarvis köməkçisi quraşdırıldı (Jarvis.app) və işə düşdü."
+echo "   İndi ekranda «Jarvis ... idarə etmək istəyir» pəncərələri çıxacaq — hamısında «İzin Ver» basın."
+echo "   Sonra Sistem Ayarları → Gizlilik → Erişilebilirlik və Ekran Kaydı-na + ilə ~/Applications/Jarvis.app əlavə edin."
+echo "   Silmək üçün: launchctl bootout gui/\$(id -u)/az.jarvis.agent; rm -rf ~/.jarvis $APP $PL"
 '''

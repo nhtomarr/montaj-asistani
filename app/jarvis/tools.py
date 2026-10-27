@@ -391,7 +391,7 @@ def _wa_personal(to: str, text: str) -> dict:
         r = mac.send("contacts", to.strip(), timeout=40)
         if not r.get("ok"):
             return {"ok": False, "text": "Kontaktlara baxa bilmədim: " + r.get("text", "") +
-                    " (Mac-də Kontaktlar icazəsini verin)"}
+                    " (Sistem Ayarları → Gizlilik → Otomasyon: Jarvis → Kişiler-i yandırın)"}
         people = []
         for line in r["text"].splitlines():
             nm, _, phs = line.partition(": ")
