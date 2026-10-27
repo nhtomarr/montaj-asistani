@@ -4,6 +4,7 @@
 <meta name="theme-color" content="#010806"><title>JARVIS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.27.0/dist/lib.iife.js"></script>
 <style>
 :root{--g:#3dffa8;--g2:#19c37d;--rgb:61,255,168;--bg:#010806;--tx:#d7ffe9;--mut:#5fd3a0aa;--line:rgba(var(--rgb),.22);--glass:rgba(3,20,14,.86);--gold:#d6ffe9;--warn:#ffd166;--err:#ff5d73}
 :root[data-theme=blue]{--g:#5cc8ff;--g2:#2d7dff;--rgb:92,200,255;--bg:#020a1a;--tx:#e3f4ff;--mut:#86c3eaaa;--glass:rgba(4,14,32,.86);--gold:#ffd84d}
@@ -119,7 +120,7 @@ input::placeholder{color:#4f8c72}
  <form id="f"><span>&gt;</span><input id="q" placeholder="komanda verin…" autocomplete="off" enterkeyhint="send">
   <button type="button" class="mic" id="mic" aria-label="Danış"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
   <button class="send" aria-label="Göndər"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></form>
- <div class="hint">NÜVƏNİ VƏ YA MİKROFONU BASIB SAXLAYIN — DANIŞIN</div>
+ <div class="hint">NÜVƏYƏ VƏ YA MİKROFONA TOXUNUN — CANLI DANIŞIQ</div>
 </div>
 
 <script>
@@ -137,9 +138,9 @@ o.type='sawtooth';o.frequency.value=55;o2.type='sine';o2.frequency.value=110.5;l
 o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(master);o.start();o2.start();g.gain.linearRampToValueAtTime(humOn?.05:0,a.currentTime+2.5);
 beep(220,1.2,'sine',.12,4)}catch(e){}}
 /* ===== audio analizator (halqa səsə reaksiya verir) ===== */
-let analyser=null,level=0,abuf=null;
+let analyser=null,level=0,abuf=null,conv=null,convBusy=false;
 function attach(node){const a=ac();analyser=a.createAnalyser();analyser.fftSize=256;abuf=new Uint8Array(analyser.frequencyBinCount);node.connect(analyser)}
-function readLevel(){if(!analyser)return 0;analyser.getByteFrequencyData(abuf);let s=0;for(let i=2;i<40;i++)s+=abuf[i];return Math.min(1,s/(38*170))}
+function readLevel(){if(conv){try{return Math.min(1,(mode==='speak'?conv.getOutputVolume():conv.getInputVolume())*1.6)}catch(e){return 0}}if(!analyser)return 0;analyser.getByteFrequencyData(abuf);let s=0;for(let i=2;i<40;i++)s+=abuf[i];return Math.min(1,s/(38*170))}
 /* ===== tema ===== */
 let theme='blue';try{theme=localStorage.getItem('jv_theme')||'blue'}catch(e){}
 function applyTheme(){document.documentElement.dataset.theme=theme==='blue'?'blue':'';
@@ -240,7 +241,7 @@ const txt=' NEURAL CORE ◆ JARVIS ONLINE ◆ '.repeat(mob?2:3);const st=Math.PI
 for(let i=0;i<txt.length;i++){c.save();c.rotate(i*st);c.translate(0,-R*1.65);c.fillText(txt[i],0,0);c.restore()}return RT}
 // dalğa formalı göstərici
 const wv=$('wave'),wx=wv.getContext('2d');
-function drawWave(){wx.clearRect(0,0,360,52);const n=36;for(let i=0;i<n;i++){let v;if(analyser&&abuf){v=abuf[2+i]/255}else{v=(mode==='idle'?.06:.25)*(.5+.5*Math.sin(t*6+i*.7))*(1+Math.sin(t*2.3+i))}
+function drawWave(){wx.clearRect(0,0,360,52);const n=36;for(let i=0;i<n;i++){let v;if(conv){v=Math.min(1,level*(.55+.45*Math.abs(Math.sin(t*9+i*.9))))}else if(analyser&&abuf){v=abuf[2+i]/255}else{v=(mode==='idle'?.06:.25)*(.5+.5*Math.sin(t*6+i*.7))*(1+Math.sin(t*2.3+i))}
 const h=Math.max(2,v*46);wx.fillStyle=mode==='listen'||mode==='speak'?`rgba(255,216,77,.9)`:rgba(.7);wx.fillRect(i*10+2,26-h/2,5,h)}}
 applyTheme();size();frame();
 /* ===== saat, glitch ===== */
@@ -260,24 +261,31 @@ if(!b64){setMode('idle');return}const a=new Audio('data:audio/mpeg;base64,'+b64)
 try{const src=ac().createMediaElementSource(a);attach(src);src.connect(master)}catch(e){}
 setMode('speak');a.onended=()=>{analyser=null;setMode('idle')};a.play().catch(()=>setMode('idle'))}
 /* ===== mətn ===== */
-$('f').onsubmit=async e=>{e.preventDefault();const v=$('q').value.trim();if(!v)return;$('q').value='';beep(900,.05);setMode('think');
+$('f').onsubmit=async e=>{e.preventDefault();const v=$('q').value.trim();if(!v)return;$('q').value='';beep(900,.05);
+if(conv){liveUser=v;$('reply').innerHTML=`<span class="you">› ${esc(v)}</span>`;conv.sendUserMessage(v);return}setMode('think');
 $('reply').innerHTML=`<span class="you">› ${esc(v)}</span><span class="cursor"></span>`;
 try{const r=await fetch('/api/jarvis/chat?t='+T,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:v,speak:true})});
 const j=await r.json();play(j.audio,j.reply,v);load()}catch(err){setMode('error');typeOut($('reply'),'Bağlantı xətası: '+err)}};
-/* ===== səs: basıb saxla ===== */
-let rec,chunks=[],stream;
-async function startRec(){if(rec&&rec.state==='recording')return;try{if(player)player.pause();stream=await navigator.mediaDevices.getUserMedia({audio:true});
-try{attach(ac().createMediaStreamSource(stream))}catch(e){}
-const type=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'audio/mp4';rec=new MediaRecorder(stream,{mimeType:type});chunks=[];
-rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());analyser=null;$('mic').classList.remove('rec');setMode('think');
-const fd=new FormData();fd.append('file',new Blob(chunks,{type}),'voice.'+(type.includes('webm')?'webm':'m4a'));
-try{const r=await fetch('/api/jarvis/voice?t='+T,{method:'POST',body:fd});const j=await r.json();play(j.audio,j.reply,j.heard);load()}
-catch(err){setMode('error');typeOut($('reply'),'Bağlantı xətası: '+err)}};rec.start();$('mic').classList.add('rec');setMode('listen')}
-catch(e){setMode('error');typeOut($('reply'),'Mikrofona icazə verin (brauzer ayarları).')}}
-function stopRec(){if(rec&&rec.state==='recording')rec.stop()}
-const mic=$('mic');mic.addEventListener('pointerdown',e=>{e.preventDefault();startRec()});['pointerup','pointerleave','pointercancel'].forEach(ev=>mic.addEventListener(ev,stopRec));
-cv.addEventListener('pointerdown',e=>{if(Math.hypot(e.clientX-CX,e.clientY-CY)<R*1.1){e.preventDefault();startRec()}});
-addEventListener('pointerup',stopRec);
+/* ===== canlı səsli danışıq (ElevenLabs WebRTC — real vaxt) ===== */
+const STATE_LIVE={listen:'◉ DİNLƏYİRƏM',speak:'▶ DANIŞIRAM',think:'◆ İCRA EDİRƏM'};
+let liveUser='';
+async function startLive(){if(conv||convBusy)return;convBusy=true;setMode('think');$('state').textContent='◆ QOŞULUR…';
+try{if(player)player.pause();ac();
+const r=await fetch('/api/jarvis/voice-token?t='+T);if(!r.ok)throw new Error(await r.text());const k=await r.json();
+conv=await ElevenLabsClient.Conversation.startSession({conversationToken:k.token,connectionType:'webrtc',dynamicVariables:{session_key:k.session_key},
+ onConnect:()=>{$('mic').classList.add('rec');setMode('listen');$('state').textContent=STATE_LIVE.listen;beep(1200,.08,'square',.05)},
+ onDisconnect:()=>{conv=null;$('mic').classList.remove('rec');setMode('idle');beep(400,.12,'sine',.06)},
+ onModeChange:({mode:m})=>{if(!conv)return;setMode(m==='speaking'?'speak':'listen');$('state').textContent=STATE_LIVE[m==='speaking'?'speak':'listen']},
+ onMessage:({message,source})=>{message=String(message||'').replace(/\[[a-zA-Z ]{2,20}\]\s*/g,'');if(source==='user'){liveUser=message;$('reply').innerHTML=`<span class="you">› ${esc(message)}</span>`}else{typeOut($('reply'),message,liveUser);flashT=.5}},
+ onAgentToolRequest:()=>{mode='think';$('state').textContent=STATE_LIVE.think},
+ onAgentToolResponse:()=>{load()},
+ onError:(m)=>{typeOut($('reply'),'Səs xətası: '+m)}});
+}catch(e){conv=null;setMode('error');typeOut($('reply'),'Canlı səsə qoşulmaq alınmadı: '+(e.message||e)+'\nMikrofon icazəsini yoxlayın.')}
+convBusy=false}
+async function stopLive(){const c=conv;conv=null;if(c){try{await c.endSession()}catch(e){}}$('mic').classList.remove('rec');setMode('idle')}
+function toggleLive(){conv?stopLive():startLive()}
+$('mic').addEventListener('click',e=>{e.preventDefault();toggleLive()});
+cv.addEventListener('click',e=>{if(Math.hypot(e.clientX-CX,e.clientY-CY)<R*1.15)toggleLive()});
 /* ===== məlumatlar ===== */
 function countTo(el,v){if(v==null||v==='–'){el.textContent='–';return}const s=+el.textContent||0,e=+v,t0=performance.now();
 (function st(n){const k=Math.min(1,(n-t0)/700);el.textContent=Math.round(s+(e-s)*k);if(k<1)requestAnimationFrame(st)})(t0)}

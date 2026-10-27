@@ -36,13 +36,36 @@ async def phone(req: Request):
         raise HTTPException(403, "icazə yoxdur")
     body = await req.json()
     caller = body.get("caller_id") or ""
-    if config.ALLOWED_CALLER_IDS and _digits(caller) not in {_digits(x) for x in config.ALLOWED_CALLER_IDS}:
+    from_panel = hmac.compare_digest(str(body.get("session_key") or ""), _session_key())
+    if not from_panel and config.ALLOWED_CALLER_IDS and \
+            _digits(caller) not in {_digits(x) for x in config.ALLOWED_CALLER_IDS}:
         return {"message": "Bağışlayın, bu nömrədən tapşırıq qəbul edə bilmərəm."}
     msg = (body.get("message") or body.get("instruction") or "").strip()
     if not msg:
         return {"message": "Eşitmədim, bir daha deyin."}
-    reply = await asyncio.to_thread(agent.ask_safe, msg, "phone")
+    reply = await asyncio.to_thread(agent.ask_safe, msg, "voice" if from_panel else "phone")
     return {"message": reply}
+
+
+def _session_key() -> str:
+    import hashlib
+    return hashlib.sha256(f"voice:{config.PANEL_TOKEN}:{config.AGENT_TOOL_SECRET}".encode()).hexdigest()[:32] \
+        if config.PANEL_TOKEN else "-"
+
+
+AGENT_ID = os.getenv("ELEVENLABS_AGENT_ID", "agent_4401m5x2x7w6f29bhbm5kv9dc6ys")
+
+
+@router.get("/api/jarvis/voice-token")
+def voice_token(t: str | None = None):
+    """Panel üçün real vaxt səs sessiyası (ElevenLabs WebRTC) tokeni."""
+    _check(t)
+    import httpx
+    r = httpx.get("https://api.elevenlabs.io/v1/convai/conversation/token", params={"agent_id": AGENT_ID},
+                  headers={"xi-api-key": config.ELEVENLABS_API_KEY}, timeout=20)
+    if r.status_code != 200:
+        raise HTTPException(502, f"ElevenLabs: {r.text[:200]}")
+    return {"token": r.json()["token"], "agent_id": AGENT_ID, "session_key": _session_key()}
 
 
 # ---------- panel API

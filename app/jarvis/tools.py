@@ -119,6 +119,8 @@ TOOLS = [
     _s("site_task", "Sayt yarat, düzəlt, geri qaytar və ya siyahıla.",
        {"action": {"type": "string", "enum": ["create", "edit", "undo", "list"]}, "name": STR, "slug": STR,
         "request": STR}, ["action"]),
+    _s("telegram_send", "Sahibə Telegram-da mesaj göndər (uzun nəticələr, linklər, siyahılar — xüsusən səsli söhbətdə).",
+       {"text": STR}, ["text"]),
     _s("system_status", "Sistem vəziyyəti: qoşulmuş xidmətlər, son video işi, təsdiq gözləyənlər.", {}),
 ]
 
@@ -307,6 +309,9 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             r = {"ok": sites.undo(slug), "url": sites.site_url(slug)}
         store.log("sayt", f"Sayt ({act}): {r.get('url')}")
         return _ok(r)
+    if name == "telegram_send":
+        notify.sink.send_text(a["text"])
+        return _ok({"status": "göndərildi"})
     if name == "system_status":
         import os
         j = db.latest_job()

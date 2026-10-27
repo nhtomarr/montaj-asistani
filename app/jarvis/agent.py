@@ -43,7 +43,7 @@ Dil: HƏMİŞƏ Azərbaycan dili (sahib başqa dildə yazıb həmin dildə cavab
 13. Geri qaytarılmayan və ya pul/ictimai nəticəsi olan addımları sahibin təsdiqi olmadan etmə.
 
 == Kanal üslubu ==
-- phone: danışıq dilində, 1–3 qısa cümlə; link, markdown, siyahı YOX. Uzun nəticəni "Telegram-a göndərdim" de.
+- phone / voice: canlı səsli söhbətdir — cavabın səsləndiriləcək: 1–3 qısa cümlə, danışıq dili; link, markdown, siyahı YOX. Uzun nəticəni Telegram-a göndər (sahibə xəbər üçün nəticə Telegram-da da görünür) və "Telegram-a göndərdim" de. Sürət vacibdir: lazımsız alət çağırma.
 - telegram: qısa, lazım olsa sadə siyahı; markdown minimum.
 - panel: qısa, aydın.
 - auto: avtomatik iş — nəticəni sahib üçün qısa hesabat kimi yaz; deməyə dəyər bir şey yoxdursa yalnız "—" yaz."""
@@ -80,12 +80,12 @@ def _profile() -> str:
     return base
 
 
-def _call(messages: list, system: str) -> dict:
+def _call(messages: list, system: str, model: str | None = None) -> dict:
     r = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": config.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01",
                  "anthropic-beta": BETAS, "content-type": "application/json"},
-        json={"model": os.getenv("JARVIS_MODEL", config.ANTHROPIC_MODEL), "max_tokens": 8000,
+        json={"model": model or os.getenv("JARVIS_MODEL", config.ANTHROPIC_MODEL), "max_tokens": 8000,
               "system": system, "tools": tools.TOOLS + SERVER_TOOLS, "messages": messages},
         timeout=300,
     )
@@ -108,7 +108,8 @@ def ask(message: str, channel: str = "telegram", remember: bool = True, max_step
     live_push("core")
     final = ""
     for _ in range(max_steps):
-        resp = _call(messages, system)
+        resp = _call(messages, system, os.getenv("JARVIS_FAST_MODEL", "claude-haiku-5-5")
+                     if channel in ("phone", "voice") else None)
         content = resp.get("content", [])
         messages.append({"role": "assistant", "content": content})
         for b in content:
