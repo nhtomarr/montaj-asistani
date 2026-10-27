@@ -136,6 +136,7 @@ async def on_video(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     f = await obj.get_file(read_timeout=600)
     tmp = config.WORK_DIR / f"tg_{obj.file_unique_id}"
     await f.download_to_drive(tmp, read_timeout=1800)
+    _drop_tg_copy(f.file_path)
     name = getattr(obj, "file_name", None) or f"telegram_{obj.file_unique_id}.mp4"
     v = await asyncio.to_thread(videos.ingest, tmp, name, "telegram")
     if m.caption:
@@ -144,6 +145,15 @@ async def on_video(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     kb = InlineKeyboardMarkup([[InlineKeyboardButton(t, callback_data=f"p:{k}:{v['id']}")] for t, k in PRESET_BUTTONS])
     await msg.edit_text(f"📥 Qəbul edildi: {_video_line(v)}\n\nNə edək? Düyməni seçin və ya yazın/deyin.",
                         reply_markup=kb)
+
+
+def _drop_tg_copy(path) -> None:
+    """Telegram Bot API serveri faylın öz nüsxəsini saxlayır — yer tutmasın deyə silirik."""
+    try:
+        if path and str(path).startswith("/var/lib/telegram-bot-api/"):
+            os.remove(path)
+    except OSError:
+        pass
 
 
 async def on_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

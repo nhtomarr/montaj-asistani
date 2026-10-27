@@ -22,7 +22,7 @@ services:
       TELEGRAM_API_BASE: http://telegram-bot-api:8081
     volumes:
       - ./data:/data
-      - tgdata:/var/lib/telegram-bot-api:ro
+      - tgdata:/var/lib/telegram-bot-api
     depends_on:
       - telegram-bot-api
 

@@ -116,6 +116,18 @@ def _ads() -> None:
     db.kv_set("ads_alerts_sent", list(cur))
 
 
+def _disk() -> None:
+    import shutil
+    import config
+    du = shutil.disk_usage(config.DATA_DIR)
+    pct = du.used / du.total * 100
+    level = 95 if pct >= 95 else 85 if pct >= 85 else 0
+    if level and db.kv_get("disk_alert_level") != level:
+        _send(f"💾 Server diski {pct:.0f}% doludur (boş: {du.free / 1e9:.1f} GB). Köhnə videoları silmək və ya diski "
+              f"böyütmək lazımdır (Hetzner → Volumes və ya Rescale).")
+    db.kv_set("disk_alert_level", level)
+
+
 def loop() -> None:
     last_inbox = last_mon = last_deep = last_ads = 0.0
     while True:
@@ -132,6 +144,8 @@ def loop() -> None:
                 if deep:
                     last_deep = time.time()
                 _monitor(deep)
+            if time.time() - last_mon < 31:
+                _disk()
             if time.time() - last_ads > 7200:
                 last_ads = time.time()
                 _ads()
