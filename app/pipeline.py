@@ -21,6 +21,7 @@ STAGES = {
     "cut": "Təkrarlar və boşluqlar atılır",
     "render": "Montaj render edilir",
     "reels": "Reels hazırlanır",
+    "fx": "Animasiyalar və effektlər əlavə olunur",
     "youtube": "YouTube-a yüklənir",
     "instagram": "Instagram-a yüklənir",
 }
@@ -127,6 +128,8 @@ def run_job(job_id: int) -> None:
         order.append("render")
     if plan.get("reels"):
         order.append("reels")
+    if plan.get("dynamic"):
+        order.append("fx")
     if plan.get("upload_youtube"):
         order.append("youtube")
     if plan.get("upload_instagram"):
@@ -179,7 +182,7 @@ def run_job(job_id: int) -> None:
             pr.start("render")
             out, url = _public_path(f"montaj_{video['id']}_{job_id}.mp4")
             ass = None
-            if plan.get("subtitles_long") and words:
+            if plan.get("subtitles_long") and words and not plan.get("dynamic"):
                 ass = subtitles.write_long(tr.remap_words(words, ranges), info["width"], info["height"],
                                            wdir / f"long_{job_id}.ass")
             media.render(src, ranges, out, info=info, mode="orig", loud=loud, loud_target=config.LONG_LOUDNESS,
@@ -202,7 +205,7 @@ def run_job(job_id: int) -> None:
                 r_ranges = tr.utts_to_ranges(sel, info["duration"])
             out, url = _public_path(f"reels_{video['id']}_{job_id}.mp4")
             ass = None
-            if plan.get("subtitles_reels", True) and words:
+            if plan.get("subtitles_reels", True) and words and not plan.get("dynamic"):
                 ass = subtitles.write_reels(tr.remap_words(words, r_ranges), wdir / f"reels_{job_id}.ass")
             media.render(src, r_ranges, out, info=info, mode="reels", loud=loud, loud_target=config.LONG_LOUDNESS,
                          ass_path=str(ass) if ass else None, logo_path=_logo_path(plan.get("logo")),
@@ -211,6 +214,20 @@ def run_job(job_id: int) -> None:
                                "caption": plan.get("instagram_caption") or rdec.get("caption") or dec.get("description", ""),
                                "title": rdec.get("title") or dec.get("title"),
                                "duration": sum(b - a for a, b in r_ranges)}
+
+        if plan.get("dynamic") and words:
+            from editor import enhance
+            pr.start("fx")
+            fx_targets = []
+            if "long" in result:
+                fx_targets.append((result["long"]["path"], ranges))
+            if "reels" in result:
+                fx_targets.append((result["reels"]["path"], r_ranges))
+            for path, rr in fx_targets:
+                fx = enhance.apply(path, tr.remap_words(words, rr), path, extra=plan.get("extra", ""),
+                                   progress=pr.percent)
+                pr.note(f"✨ {fx['highlights']} animasiyalı yazı, {fx['zooms']} zoom, {fx['broll']} B-roll, "
+                        f"{fx['sfx']} səs effekti")
 
         result["language"] = lang
         db.update_job(job_id, result=result)

@@ -18,6 +18,7 @@ DEFAULT_PLAN = {
     "youtube_title": None,
     "instagram_caption": None,
     "reels_max_seconds": None,
+    "dynamic": False,
     "extra": "",
 }
 
@@ -26,6 +27,7 @@ PRESETS = {
     "reels_instagram": {"long_video": False, "reels": True, "upload_instagram": True, "logo": "default"},
     "both": {"long_video": True, "reels": True, "upload_youtube": True, "upload_instagram": True, "logo": "default"},
     "edit_only": {"long_video": True},
+    "dynamic_reels": {"long_video": False, "reels": True, "dynamic": True, "logo": "default"},
 }
 
 SYSTEM = """Sən video montaj asistanının əmr analizatorusan. İstifadəçi (Azərbaycan, türk, rus və ya ingilis dilində) tapşırıq verir.
@@ -47,6 +49,8 @@ Onu JSON plana çevir. Sahələr:
 - youtube_privacy: "public" | "unlisted" | "private" | null (deməyibsə null)
 - youtube_title, instagram_caption: istifadəçi özü veribsə, yoxsa null
 - reels_max_seconds: deyibsə rəqəm, yoxsa null
+- dynamic: danışığa uyğun animasiya, effekt, dinamik/canlı montaj, B-roll, zoom, "TikTok üslubu", animasiyalı altyazı
+  istənibsə true (default false)
 - extra: montajla bağlı əlavə göstərişlər (məs. "girişi qısalt", "sondakı reklamı at") — sərbəst mətn
 - reply: action "status"/"chat" olduqda istifadəçiyə qısa cavab (onun dilində); "process" üçün 1 cümlə təsdiq ("Not alıram, ...").
 Qeyd: "YouTube-a yüklə" = long_video true + upload_youtube true. "Reels/Instagram" = reels true. "Shorts" = reels true + upload_youtube.

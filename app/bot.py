@@ -25,6 +25,7 @@ PRESET_BUTTONS = [
     ("📱 Reels + Instagram", "reels_instagram"),
     ("⚡ Hər ikisi", "both"),
     ("✂️ Yalnız montaj", "edit_only"),
+    ("✨ Dinamik Reels (animasiyalı)", "dynamic_reels"),
 ]
 
 

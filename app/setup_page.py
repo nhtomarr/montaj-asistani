@@ -37,6 +37,7 @@ FIELDS = [
     ("TIKTOK_ACCESS_TOKEN", "TikTok Ads access token", True, "business-api.tiktok.com → developer app"),
     ("TIKTOK_ADVERTISER_IDS", "TikTok advertiser ID-ləri", False, "vergüllə"),
     ("ADS_LOW_BALANCE", "Aşağı balans xəbərdarlığı həddi", False, "məs. 20"),
+    ("PEXELS_API_KEY", "Pexels API key (B-roll stok videolar)", True, "pexels.com/api → pulsuz açar"),
     ("MONITOR_URLS", "Nəzarət olunan saytlar", False, "https://luxresidence.az, https://marox.az — vergüllə"),
     ("WHATSAPP_TOKEN", "WhatsApp Cloud API token", True, "developers.facebook.com → WhatsApp → API Setup (System User tokeni tövsiyə olunur)"),
     ("WHATSAPP_PHONE_ID", "WhatsApp Phone number ID", False, "eyni səhifədən"),
