@@ -106,6 +106,11 @@ TOOLS = [
     _s("monitor_add", "Saytı daimi nəzarətə əlavə et (5 dəqiqədən bir).", {"url": STR}, ["url"]),
     _s("monitor_remove", "Saytı nəzarətdən çıxar.", {"url": STR}, ["url"]),
     # --- WhatsApp və müştərilər
+    _s("whatsapp_personal", "Sahibin ÖZ WhatsApp-ından (Mac-dəki WhatsApp Desktop vasitəsilə) istənilən adama mesaj "
+       "göndər. to: kontaktın adı (Mac Kontaktlarında axtarılır, məs. 'Anar') və ya nömrə. Bir neçə uyğun kontakt "
+       "çıxsa, siyahını sahibə de və hansı olduğunu soruş. Göndərməzdən əvvəl kimə və nə yazılacağını bir cümlə ilə "
+       "təsdiqlət (sahib mətni özü dəqiq deyibsə, birbaşa göndər).",
+       {"to": STR, "text": STR}, ["to", "text"]),
     _s("whatsapp_conversations", "Son WhatsApp yazışmaları (müştərilər).", {}),
     _s("whatsapp_read", "Müştəri ilə yazışmanı oxu.", {"phone": STR}, ["phone"]),
     _s("whatsapp_send", "Müştəriyə WhatsApp mesajı göndər (yalnız sahib istəyəndə; son 24 saatda yazmış müştəriyə).",
@@ -132,7 +137,7 @@ TOOLS = [
        "say (arg: Mac-in dinamikindən deyiləcək mətn), volume (arg: 0-100), media (arg: pause|play|mute|unmute), "
        "lock, apps, shell (arg: terminal əmri — HƏMİŞƏ sahibin təsdiqi ilə icra olunur, yalnız lazım olanda).",
        {"action": {"type": "string", "enum": ["open_app", "quit_app", "open_url", "play_video", "screenshot", "notify",
-                                              "say", "volume", "media", "lock", "apps", "shell"]}, "arg": STR},
+                                              "say", "volume", "media", "lock", "apps", "update", "shell"]}, "arg": STR},
        ["action"]),
     _s("system_status", "Sistem vəziyyəti: qoşulmuş xidmətlər, son video işi, təsdiq gözləyənlər.", {}),
 ]
@@ -276,6 +281,8 @@ def _run(name: str, a: dict, ctx: dict) -> str:
     if name == "monitor_remove":
         from jarvis import monitor
         return _ok({"izlənir": monitor.remove(a["url"])})
+    if name == "whatsapp_personal":
+        return _ok(_wa_personal(a["to"], a["text"]))
     if name == "whatsapp_conversations":
         from jarvis import whatsapp
         return _ok(whatsapp.conversations())
@@ -361,6 +368,46 @@ def _latest_output(which: str) -> str | None:
                 if (r.get(k) or {}).get("url"):
                     return r[k]["url"]
     return None
+
+
+def _norm_phone(x: str) -> str:
+    d = re.sub(r"\D", "", x)
+    if d.startswith("00"):
+        d = d[2:]
+    if len(d) == 10 and d.startswith("0"):
+        d = "994" + d[1:]
+    elif len(d) == 9:
+        d = "994" + d
+    return d
+
+
+def _wa_personal(to: str, text: str) -> dict:
+    from jarvis import mac
+
+    if not mac.online():
+        return {"ok": False, "text": "Mac oflayndır — şəxsi WhatsApp mesajı Mac-dəki WhatsApp vasitəsilə gedir."}
+    phone = _norm_phone(to) if len(re.sub(r"\D", "", to)) >= 7 else ""
+    if not phone:
+        r = mac.send("contacts", to.strip(), timeout=40)
+        if not r.get("ok"):
+            return {"ok": False, "text": "Kontaktlara baxa bilmədim: " + r.get("text", "") +
+                    " (Mac-də Kontaktlar icazəsini verin)"}
+        people = []
+        for line in r["text"].splitlines():
+            nm, _, phs = line.partition(": ")
+            nums = [_norm_phone(p) for p in phs.split(",") if len(re.sub(r"\D", "", p)) >= 7]
+            if nm.strip() and nums:
+                people.append({"ad": nm.strip(), "nömrələr": list(dict.fromkeys(nums))})
+        if not people:
+            return {"ok": False, "text": f"Kontaktlarda «{to}» adlı nömrəsi olan adam tapılmadı. Nömrəni soruş."}
+        if len(people) > 1 or len(people[0]["nömrələr"]) > 1:
+            return {"ok": False, "seçim_lazımdır": people[:10],
+                    "text": "Bir neçə uyğun kontakt/nömrə var — sahibdən hansı olduğunu soruş, sonra nömrə ilə göndər."}
+        phone = people[0]["nömrələr"][0]
+        to = people[0]["ad"]
+    r = mac.send("whatsapp", f"{phone}\n{text}", timeout=60)
+    store.log("whatsapp", f"Şəxsi WhatsApp → {to} (+{phone}): {text[:100]} [{r.get('text', '')[:60]}]")
+    return {**r, "kimə": to, "nömrə": "+" + phone}
 
 
 def _mac(action: str, arg: str) -> dict:

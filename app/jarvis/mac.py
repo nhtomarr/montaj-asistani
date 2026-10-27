@@ -21,7 +21,7 @@ SHOTS = config.PUBLIC_DIR / "mac"
 SHOTS.mkdir(parents=True, exist_ok=True)
 
 ACTIONS = ("open_app", "quit_app", "open_url", "play_video", "screenshot", "notify", "play_audio",
-           "volume", "media", "lock", "apps", "shell")
+           "volume", "media", "lock", "apps", "shell", "contacts", "whatsapp", "update")
 
 
 def key() -> str:
@@ -43,7 +43,7 @@ def send(action: str, arg: str = "", timeout: float = 45) -> dict:
         return {"ok": False, "text": f"naməlum əmr {action}"}
     if not online():
         return {"ok": False, "text": "Mac oflayndır (söndürülüb, yuxudadır və ya köməkçi quraşdırılmayıb)."}
-    if action != "shell":
+    if action not in ("shell", "whatsapp"):
         arg = arg.replace('"', "'").replace("\\", "")
     cid = uuid.uuid4().hex[:12]
     with _cv:
@@ -137,6 +137,17 @@ run() { # id action arg
         *) ok=0; out="naməlum" ;; esac ;;
     lock) pmset displaysleepnow; out="ekran kilidləndi" ;;
     apps) out=$(osascript -e 'tell application "System Events" to get name of every process whose background only is false' 2>&1) || ok=0 ;;
+    contacts) out=$(osascript -e "tell application \"Contacts\"" -e "set o to \"\"" \
+        -e "repeat with p in (every person whose name contains \"$arg\")" -e "set o to o & name of p & \": \"" \
+        -e "repeat with ph in phones of p" -e "set o to o & (value of ph) & \", \"" -e "end repeat" \
+        -e "set o to o & linefeed" -e "end repeat" -e "return o" -e "end tell" 2>&1) || ok=0; out=${out:-"tapılmadı"} ;;
+    whatsapp) phone=${arg%%$'\n'*}; text=${arg#*$'\n'}
+      enc=$(JTEXT="$text" osascript -l JavaScript -e 'ObjC.import("stdlib"); encodeURIComponent($.getenv("JTEXT"))')
+      if ! open "whatsapp://send?phone=$phone&text=$enc" 2>/dev/null; then ok=0; out="WhatsApp Desktop quraşdırılmayıb (App Store-dan yükləyin)"
+      else sleep 4; osascript -e 'tell application "WhatsApp" to activate' -e 'delay 0.8' -e 'tell application "System Events" to key code 36' >/dev/null 2>&1 \
+        && out="göndərildi: +$phone" || { ok=0; out="Mesaj yazıldı, amma Enter basıla bilmədi — Sistem Ayarları → Məxfilik → Əlçatanlıq bölməsində zsh/osascript-ə icazə verin"; }; fi ;;
+    update) curl -fsSL "$SERVER/mac/install?k=$KEY" | JV_UPDATE=1 zsh >/dev/null 2>&1 && reply $id 1 "yeniləndi, yenidən başlayır" || reply $id 0 "yenilənmədi"
+      kill $$; return ;;
     shell) out=$(cd ~ && /bin/zsh -lc "$arg" 2>&1 | tail -c 5000); ok=$([[ ${pipestatus[1]} == 0 ]] && echo 1 || echo 0) ;;
     *) ok=0; out="naməlum əmr" ;;
   esac
@@ -171,6 +182,7 @@ cat > "$PL" <<PLIST_EOF
 <key>StandardErrorPath</key><string>$DIR/agent.log</string>
 </dict></plist>
 PLIST_EOF
+[[ -n "$JV_UPDATE" ]] && exit 0
 launchctl bootout gui/$(id -u)/az.jarvis.agent 2>/dev/null || true
 launchctl bootstrap gui/$(id -u) "$PL"
 screencapture -x "$DIR/test.png" 2>/dev/null || true
