@@ -34,8 +34,10 @@ services:
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN}
+    # qovluq kimi qoşulur + --watch: /yenile-dən sonra Caddyfile dəyişikliyi avtomatik tətbiq olunur
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile --watch
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro
       - caddy_data:/data
     depends_on:
       - app
