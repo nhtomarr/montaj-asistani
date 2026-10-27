@@ -27,6 +27,9 @@ STAGES = {
 }
 
 
+LIVE: dict[int, dict] = {}  # job_id → canlı vəziyyət (Jarvis üçün)
+
+
 class Progress:
     def __init__(self, job_id: int, order: list[str]):
         self.job_id, self.order = job_id, order
@@ -75,6 +78,12 @@ class Progress:
 
     def push(self, force: bool = False):
         now = time.time()
+        st = LIVE.setdefault(self.job_id, {"başlayıb": now})
+        st.update({"mərhələ": STAGES.get(self.cur, "") if self.cur else "bitir",
+                   "faiz": int(self.pct * 100) if self.pct is not None else None,
+                   "bitən_mərhələlər": [STAGES[k] for k in self.order if k in self.done],
+                   "qalan_mərhələlər": [STAGES[k] for k in self.order if k not in self.done and k != self.cur],
+                   "keçən_dəqiqə": round((now - st["başlayıb"]) / 60, 1)})
         if force or now - self._last > 4:
             self._last = now
             notify.sink.progress(self.job_id, self.text())

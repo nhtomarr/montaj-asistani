@@ -117,8 +117,8 @@ TOOLS = [
     _s("video_task", "YENİ video montaj/Reels/YouTube/Instagram tapşırığı ver (son yüklənən videoya). Yalnız sahib "
        "açıq şəkildə montaj/emal istəyəndə; vəziyyət və ya link soruşanda video_jobs işlət.",
        {"instruction": STR}, ["instruction"]),
-    _s("video_jobs", "Video işlərinin siyahısı və vəziyyəti (növbədə/icra olunur/hazır/xəta), hazır montaj və Reels "
-       "linkləri. İstifadəçi videolar haqqında SORUŞANDA bunu işlət — yeni video_task YARATMA.", {}),
+    _s("video_jobs", "Video işlərinin siyahısı və CANLI vəziyyəti (hansı mərhələdə, neçə faiz, neçə dəqiqədir gedir, qalan "
+       "mərhələlər), hazır montaj və Reels linkləri. İstifadəçi videolar haqqında SORUŞANDA bunu işlət — yeni video_task YARATMA.", {}),
     _s("site_task", "Sayt yarat, düzəlt, geri qaytar və ya siyahıla.",
        {"action": {"type": "string", "enum": ["create", "edit", "undo", "list"]}, "name": STR, "slug": STR,
         "request": STR}, ["action"]),
@@ -330,7 +330,8 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             out.append({"id": j["id"], "status": j["status"], "mərhələ": pipeline.STAGES.get(j["stage"], j["stage"]),
                         "tapşırıq": (j["plan"].get("source_text") or "")[:120], "dinamik": j["plan"].get("dynamic"),
                         "montaj": (r.get("long") or {}).get("url"), "reels": (r.get("reels") or {}).get("url"),
-                        "xəta": (j["error"] or "")[:200]})
+                        "xəta": (j["error"] or "")[:200],
+                        **({"canlı": pipeline.LIVE[j["id"]]} if j["status"] == "running" and j["id"] in pipeline.LIVE else {})})
         return _ok(out)
     if name == "mac_control":
         return _ok(_mac(a.get("action", ""), str(a.get("arg") or "")))
