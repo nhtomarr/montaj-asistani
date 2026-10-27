@@ -402,7 +402,9 @@ def _wa_personal(to: str, text: str) -> dict:
         return {"ok": False, "text": "Mac oflayndır — şəxsi WhatsApp mesajı Mac-dəki WhatsApp vasitəsilə gedir."}
     phone = _norm_phone(to) if len(re.sub(r"\D", "", to)) >= 7 else ""
     if not phone:
-        r = mac.send("contacts", to.strip(), timeout=40)
+        r = mac.send("contacts", to.strip(), timeout=60)
+        if r.get("ok") and r.get("text", "").strip() in ("", "tapılmadı") and len(to.split()) > 1:
+            r = mac.send("contacts", to.split()[0], timeout=60)  # səs tanıma soyadı səhv yaza bilər
         if not r.get("ok"):
             return {"ok": False, "text": "Kontaktlara baxa bilmədim. Xam xəta: " + r.get("text", "")[:300],
                     "alternativ": "mac_task ilə WhatsApp-ı açıb axtarışda adı tapıb yazmaq olar — sahibə təklif et"}
