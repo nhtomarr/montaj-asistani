@@ -114,8 +114,11 @@ TOOLS = [
     _s("knowledge_add", "Şirkət bilik bazasına məlumat əlavə et (WhatsApp müştəri agenti bundan istifadə edir): qiymətlər, "
        "layihələr, şərtlər, FAQ.", {"title": STR, "content": STR}, ["title", "content"]),
     # --- Media / sayt
-    _s("video_task", "Video montaj/Reels/YouTube/Instagram tapşırığı ver (son yüklənən videoya).",
+    _s("video_task", "YENİ video montaj/Reels/YouTube/Instagram tapşırığı ver (son yüklənən videoya). Yalnız sahib "
+       "açıq şəkildə montaj/emal istəyəndə; vəziyyət və ya link soruşanda video_jobs işlət.",
        {"instruction": STR}, ["instruction"]),
+    _s("video_jobs", "Video işlərinin siyahısı və vəziyyəti (növbədə/icra olunur/hazır/xəta), hazır montaj və Reels "
+       "linkləri. İstifadəçi videolar haqqında SORUŞANDA bunu işlət — yeni video_task YARATMA.", {}),
     _s("site_task", "Sayt yarat, düzəlt, geri qaytar və ya siyahıla.",
        {"action": {"type": "string", "enum": ["create", "edit", "undo", "list"]}, "name": STR, "slug": STR,
         "request": STR}, ["action"]),
@@ -319,6 +322,16 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             r = {"ok": sites.undo(slug), "url": sites.site_url(slug)}
         store.log("sayt", f"Sayt ({act}): {r.get('url')}")
         return _ok(r)
+    if name == "video_jobs":
+        import pipeline
+        out = []
+        for j in db.list_jobs(8):
+            r = j["result"] or {}
+            out.append({"id": j["id"], "status": j["status"], "mərhələ": pipeline.STAGES.get(j["stage"], j["stage"]),
+                        "tapşırıq": (j["plan"].get("source_text") or "")[:120], "dinamik": j["plan"].get("dynamic"),
+                        "montaj": (r.get("long") or {}).get("url"), "reels": (r.get("reels") or {}).get("url"),
+                        "xəta": (j["error"] or "")[:200]})
+        return _ok(out)
     if name == "mac_control":
         return _ok(_mac(a.get("action", ""), str(a.get("arg") or "")))
     if name == "telegram_send":
