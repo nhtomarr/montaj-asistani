@@ -60,6 +60,10 @@ services:
           wget -qO /tmp/x.zip https://github.com/XiaoMi/ha_xiaomi_home/archive/refs/heads/main.zip &&
           unzip -q /tmp/x.zip -d /tmp && cp -r /tmp/ha_xiaomi_home-main/custom_components/xiaomi_home /config/custom_components/
         fi
+        if [ ! -d /config/custom_components/xiaomi_miot ]; then
+          wget -qO /tmp/m.zip https://github.com/al-one/hass-xiaomi-miot/archive/refs/heads/master.zip &&
+          unzip -q /tmp/m.zip -d /tmp && cp -r /tmp/hass-xiaomi-miot-master/custom_components/xiaomi_miot /config/custom_components/
+        fi
         echo ok
 
   homeassistant:
@@ -67,7 +71,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Baku
-      JV_CONFIG_REV: "2"  # dəyişəndə /yenile konteyneri yenidən yaradır
+      JV_CONFIG_REV: "3"  # dəyişəndə /yenile konteyneri yenidən yaradır
     volumes:
       - ./data/homeassistant:/config
     depends_on:
