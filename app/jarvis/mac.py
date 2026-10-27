@@ -196,9 +196,15 @@ run() { # id action arg
   esac
   reply $id $ok "$out"
 }
+# yalnız bir nüsxə işləsin
+LOCK="$DIR/agent.pid"
+if [[ -f "$LOCK" ]] && kill -0 "$(cat "$LOCK")" 2>/dev/null && [[ "$(cat "$LOCK")" != "$$" ]]; then exit 0; fi
+echo $$ > "$LOCK"
 while true; do
-  resp=$(curl -fsS -m 40 "$SERVER/api/mac/poll?k=$KEY&name=$NAME") || { sleep 5; continue; }
-  [[ -z "$resp" ]] && continue
+  t0=$SECONDS
+  resp=$(curl -fsS -m 40 "$SERVER/api/mac/poll?k=$KEY&name=$NAME") || { sleep 10; continue; }
+  # server dərhal boş cavab qaytarırsa (yenilənmə və s.) prosessoru yükləməmək üçün gözlə
+  [[ -z "$resp" ]] && { (( SECONDS - t0 < 3 )) && sleep 5; continue; }
   while IFS=$'\t' read -r id act b64; do
     [[ -z "$id" ]] && continue
     arg=$(print -rn -- "$b64" | base64 -D 2>/dev/null)
