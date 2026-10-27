@@ -136,6 +136,38 @@ async def chat(req: Request, t: str | None = None):
     return {"reply": reply, "audio": audio}
 
 
+@router.post("/api/jarvis/siri")
+async def siri(request: Request, t: str | None = None, q: str = "", format: str = "audio"):
+    """Siri / Qısayollar (iPhone, Mac, Apple Watch): səs faylı (və ya q=mətn) qəbul edir, Abbasın səsi ilə mp3 qaytarır."""
+    from fastapi.responses import Response
+    _check(t)
+    text = q.strip()
+    if not text:
+        ctype = request.headers.get("content-type", "")
+        if "multipart" in ctype:
+            form = await request.form()
+            f = next((v for v in form.values() if hasattr(v, "read")), None)
+            data = await f.read() if f else b""
+            text = str(form.get("q") or form.get("text") or "").strip()
+        else:
+            data = await request.body()
+        if not text and data:
+            p = config.WORK_DIR / f"siri_{uuid.uuid4().hex}.m4a"
+            p.write_bytes(data)
+            try:
+                text = await asyncio.to_thread(stt.transcribe_short, p)
+            finally:
+                p.unlink(missing_ok=True)
+    reply = (await asyncio.to_thread(agent.ask_safe, text, "voice")) if text else "Eşitmədim, patron, bir daha deyin."
+    if format == "json":
+        return {"heard": text, "reply": reply}
+    b = await asyncio.to_thread(agent.tts, _speakable(reply))
+    if not b:
+        return Response(reply, media_type="text/plain; charset=utf-8")
+    from urllib.parse import quote
+    return Response(b, media_type="audio/mpeg", headers={"X-Heard": quote(text[:200]), "X-Reply": quote(reply[:500])})
+
+
 @router.post("/api/jarvis/voice")
 async def voice(t: str | None = None, file: UploadFile = File(...)):
     _check(t)

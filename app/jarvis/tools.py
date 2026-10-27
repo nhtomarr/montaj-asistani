@@ -103,7 +103,7 @@ TOOLS = [
     # --- Nəzarət
     _s("monitor_status", "İzlənən saytların vəziyyəti (işləyir/çöküb, cavab vaxtı, SSL/domen günləri).", {}),
     _s("monitor_check", "Saytı indi yoxla (SSL və domen bitmə tarixi daxil).", {"url": STR}, ["url"]),
-    _s("monitor_add", "Saytı daimi nəzarətə əlavə et (5 dəqiqədən bir).", {"url": STR}, ["url"]),
+    _s("monitor_add", "Saytı və ya serveri daimi nəzarətə əlavə et (5 dəqiqədən bir). Sayt: domen/URL; server/port: tcp://IP:port (məs. RDP tcp://1.2.3.4:3389).", {"url": STR}, ["url"]),
     _s("monitor_remove", "Saytı nəzarətdən çıxar.", {"url": STR}, ["url"]),
     # --- WhatsApp və müştərilər
     _s("whatsapp_personal", "Sahibin ÖZ WhatsApp-ından (Mac-dəki WhatsApp Desktop vasitəsilə) istənilən adama mesaj "

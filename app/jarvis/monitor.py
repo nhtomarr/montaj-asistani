@@ -18,7 +18,7 @@ def targets() -> list[str]:
 
 def add(url: str) -> list[str]:
     url = url.strip()
-    if not url.startswith("http"):
+    if not url.startswith(("http", "tcp://")):
         url = "https://" + url
     lst = db.kv_get("monitor_urls", []) or []
     if url not in lst:
@@ -60,6 +60,14 @@ def domain_days(host: str) -> int | None:
 def check(url: str, deep: bool = False) -> dict:
     t0 = time.time()
     res = {"url": url}
+    if url.startswith("tcp://"):  # server/port nəzarəti: tcp://1.2.3.4:3389 (RDP, 1C və s.)
+        hp = urlparse(url)
+        try:
+            with socket.create_connection((hp.hostname, hp.port or 80), timeout=10):
+                res.update(up=True, code="port açıq", ms=int((time.time() - t0) * 1000))
+        except Exception as e:  # noqa: BLE001
+            res.update(up=False, code=None, error=f"port bağlıdır: {str(e)[:80]}", ms=None)
+        return res
     try:
         r = httpx.get(url, timeout=20, follow_redirects=True, headers={"User-Agent": "JarvisMonitor/1.0"})
         res.update(up=r.status_code < 500, code=r.status_code, ms=int((time.time() - t0) * 1000))
@@ -80,12 +88,12 @@ def run_checks(deep: bool = False) -> list[str]:
         r = check(url, deep)
         prev = state.get(url, {})
         if prev.get("up", True) and not r["up"]:
-            alerts.append(f"🔴 SAYT ÇÖKÜB: {url}\n{r.get('code') or r.get('error')}")
+            alerts.append(f"🔴 {'SERVER ƏLÇATMAZDIR' if url.startswith('tcp://') else 'SAYT ÇÖKÜB'}: {url}\n{r.get('code') or r.get('error')}")
         elif not prev.get("up", True) and r["up"]:
-            alerts.append(f"🟢 Sayt bərpa olundu: {url} ({r['ms']} ms)")
+            alerts.append(f"🟢 Bərpa olundu: {url} ({r['ms']} ms)")
         elif r["up"] and r.get("ms") and r["ms"] > 8000 and (prev.get("ms") or 0) <= 8000:
             alerts.append(f"🟡 Sayt çox yavaşdır: {url} — {r['ms']} ms")
-        if deep:
+        if deep and not url.startswith("tcp://"):
             for key, lim, name in (("ssl_gün", 14, "SSL sertifikatı"), ("domen_gün", 30, "Domen")):
                 d = r.get(key)
                 if d is not None and d <= lim and prev.get(f"warned_{key}") != d // 7:

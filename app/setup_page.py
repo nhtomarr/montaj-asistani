@@ -19,6 +19,9 @@ RESTART_FLAG = config.DATA_DIR / ".restart"
 FIELDS = [
     # (açar, etiket, gizli?, kömək)
     ("PANEL_PASSWORD", "Panel şifrəsi (qısa giriş üçün)", True, "Jarvis-ə /login ilə bu şifrə ilə girəcəksiniz"),
+    ("OAUTH_BASE_URL", "Google girişi üçün ünvan (istəyə görə)", False, "boş qalsa server ünvanı; məs. https://jarvis.pilothayat.az"),
+    ("JARVIS_EVENING_TIME", "Axşam yekunu saatı", False, "məs. 20:30 (boş = 20:30)"),
+    ("JARVIS_MAC_BRIEF", "Səhər brifinqini Mac-də səslə de", False, "1 = bəli (default), 0 = xeyr"),
     ("PANEL_DOMAINS", "Panel üçün öz domen(lər)iniz", False, "məs. jarvis.pilothayat.az — DNS-də A qeydi serverin IP-sinə"),
     ("TELEGRAM_BOT_TOKEN", "Telegram bot token", True, "Telegram → @BotFather → /newbot"),
     ("TELEGRAM_API_ID", "Telegram API ID", False, "my.telegram.org → API development tools"),
@@ -121,7 +124,7 @@ def setup_get(t: str | None = None, msg: str = ""):
     page = SETUP_HTML.format(
         msg=f'<div class="msg">{html.escape(msg)}</div>' if msg else "",
         status=st, rows="".join(rows), t=t, yt_btn=yt_btn,
-        redirect=html.escape(f"{base}/oauth/youtube/callback"),
+        redirect=html.escape(f"{_oauth_base()}/oauth/youtube/callback"),
         panel=html.escape(f"{base}/panel?t={t}"), jarvis=html.escape(f"{base}/jarvis?t={t}"),
         task_url=html.escape(f"{base}/api/agent/task"), status_url=html.escape(f"{base}/api/agent/status"),
         secret=html.escape(env["AGENT_TOOL_SECRET"]), wa_url=html.escape(f"{base}/api/whatsapp/webhook"),
@@ -155,6 +158,12 @@ async def setup_post(request: Request, t: str | None = None):
         "Yadda saxlanıldı. Sistem yenidən başlayır — 30–60 saniyə sonra səhifəni yeniləyin."), status_code=303)
 
 
+def _oauth_base() -> str:
+    """Google sslip.io ünvanını qəbul etməsə, öz domeninizi (məs. https://jarvis.pilothayat.az) yazmaq olar."""
+    import os
+    return (os.getenv("OAUTH_BASE_URL") or config.PUBLIC_URL).rstrip("/")
+
+
 # ---- YouTube OAuth (brauzerdən, kompüter lazım deyil)
 @router.get("/oauth/youtube/start")
 def yt_start(t: str | None = None):
@@ -162,7 +171,7 @@ def yt_start(t: str | None = None):
     env = _read_env()
     q = urllib.parse.urlencode({
         "client_id": env.get("YOUTUBE_CLIENT_ID", ""),
-        "redirect_uri": f"{config.PUBLIC_URL}/oauth/youtube/callback",
+        "redirect_uri": f"{_oauth_base()}/oauth/youtube/callback",
         "response_type": "code",
         "scope": " ".join(GOOGLE_SCOPES),
         "access_type": "offline",
@@ -180,7 +189,7 @@ def yt_callback(code: str = "", state: str = "", error: str = ""):
     env = _read_env()
     r = httpx.post("https://oauth2.googleapis.com/token", data={
         "code": code, "client_id": env.get("YOUTUBE_CLIENT_ID"), "client_secret": env.get("YOUTUBE_CLIENT_SECRET"),
-        "redirect_uri": f"{config.PUBLIC_URL}/oauth/youtube/callback", "grant_type": "authorization_code",
+        "redirect_uri": f"{_oauth_base()}/oauth/youtube/callback", "grant_type": "authorization_code",
     }, timeout=30)
     rt = r.json().get("refresh_token") if r.status_code == 200 else None
     if not rt:

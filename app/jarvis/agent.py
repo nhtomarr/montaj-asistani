@@ -44,6 +44,8 @@ Dil: HƏMİŞƏ Azərbaycan dili (sahib başqa dildə yazıb həmin dildə cavab
 13. Mac: mac_control ilə sahibin iMac-ini idarə edirsən — "videonu ekranda göstər" → play_video (reels/long), proqram/sayt aç, ekran şəkli, Mac-dən səsli de, səs, dayandır. Mac oflayndırsa, Telegram-da /mac yazıb quraşdırmasını de. shell yalnız başqa yol olmayanda (təsdiqlə).
 13a. Mac-də bir neçə addımlıq iş (sayta gir, axtar, kliklə, oxu, formu doldur) → mac_task; tək əmr → mac_control. mac_task arxa fonda gedir — sahibə "başladım, nəticə Telegram-a gələcək" de.
 14. Şəxsi WhatsApp: sahibin tanışlarına/işçilərinə mesaj → whatsapp_personal (Mac-dəki WhatsApp ilə). whatsapp_send yalnız biznes nömrəsinə yazmış müştərilər üçündür.
+14a. Yaddaş: sənin yaddaşın hər söhbətdən sonra avtomatik dolur (kontakt, layihə, qərar, vəd, gözləyir, profil). Sahib
+   adam, layihə və ya keçmiş razılaşma xatırladanda ƏVVƏLCƏ memory_search et. "Kimə nə söz vermişəm?" → memory_search('vəd').
 15. DÜRÜSTLÜK: alət nəticəsi uğur göstərməyibsə heç vaxt "göndərdim/açdım/etdim" demə. Nə alınmadığını və səbəbini qısa de.
 13. Geri qaytarılmayan və ya pul/ictimai nəticəsi olan addımları sahibin təsdiqi olmadan etmə.
 
@@ -140,7 +142,42 @@ def ask(message: str, channel: str = "telegram", remember: bool = True, max_step
     if remember:
         store.chat_add(channel, "user", message)
         store.chat_add(channel, "assistant", final or "(cavab yoxdur)")
+        if channel != "auto" and os.getenv("JARVIS_AUTO_LEARN", "1") != "0":
+            threading.Thread(target=_learn, args=(message, final), daemon=True).start()
     return final or "Hazırdır."
+
+
+LEARN_SYSTEM = """Sən JARVIS-in yaddaş modulusan. Sahib ilə Jarvis arasındakı son mübadiləyə bax və yalnız GƏLƏCƏKDƏ
+lazım olacaq, SAHİBİN ÖZÜNÜN dediyi davamlı məlumatları çıxar:
+- kontakt: insanlar — kim kimdir, vəzifəsi, şirkəti, telefonu/e-poçtu, sahiblə əlaqəsi
+- layihə: layihə/şirkət haqqında fakt (ad, məqsəd, status, domen, kim cavabdehdir)
+- qərar: sahibin qəbul etdiyi qərar
+- vəd: sahibin kiməsə verdiyi söz/öhdəlik (kimə, nə, nə vaxta qədər — tarixi YYYY-MM-DD yaz)
+- gözləyir: kiminsə sahibə söz verdiyi və sahibin gözlədiyi şey (kim, nə, nə vaxta)
+- profil: sahibin özü, iş qrafiki, üslubu, üstünlükləri
+Qaydalar: Jarvis-in öz təxminlərini, ümumi bilikləri, axtarış nəticələrini, keçici şeyləri (indi harada olduğu, bir dəfəlik
+əmrlər — "Chrome-u aç") YAZMA. Artıq yaddaşda olanı təkrarlama. Heç nə yoxdursa {"items": []}.
+Format: {"items": [{"kind": "...", "title": "qısa başlıq", "content": "1–2 cümlə"}]}"""
+
+
+def _learn(message: str, reply: str) -> None:
+    """Hər söhbətdən sonra davamlı faktları, vədləri avtomatik yaddaşa yazır (arxa fonda, ucuz model)."""
+    if len(message) < 12:
+        return
+    try:
+        from llm import ask_json
+        known = "\n".join(f"- [{m['kind']}] {m['title']}" for m in store.mem_recent(40))
+        out = ask_json(LEARN_SYSTEM, f"Bu gün: {store.now():%Y-%m-%d %A}\nYaddaşda olanlar:\n{known or '—'}\n\n"
+                                     f"SAHİB: {message[:3000]}\nJARVIS: {reply[:2000]}",
+                       max_tokens=800, retries=0, model=os.getenv("JARVIS_FAST_MODEL", "claude-haiku-5-5"))
+        for it in (out or {}).get("items", [])[:5]:
+            title, kind = (it.get("title") or "").strip(), (it.get("kind") or "qeyd").strip()
+            if not title or any(m["title"].lower() == title.lower() for m in store.mem_search(title, 3)):
+                continue
+            store.mem_save(title, it.get("content", ""), kind, "avto")
+            store.log("yaddaş", f"Öyrəndim [{kind}]: {title}")
+    except Exception as e:  # noqa: BLE001
+        log.info("learn: %s", e)
 
 
 def ask_safe(message: str, channel: str = "telegram", **kw) -> str:

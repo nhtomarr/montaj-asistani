@@ -42,7 +42,7 @@ def ask_text(system: str, content, max_tokens: int = 20000) -> str:
     return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
 
-def ask_json(system: str, user: str, max_tokens: int = 4000, retries: int = 2):
+def ask_json(system: str, user: str, max_tokens: int = 4000, retries: int = 2, model: str | None = None):
     if not ANTHROPIC_API_KEY:
         raise LLMError("ANTHROPIC_API_KEY təyin edilməyib")
     last = None
@@ -56,7 +56,7 @@ def ask_json(system: str, user: str, max_tokens: int = 4000, retries: int = 2):
                     "content-type": "application/json",
                 },
                 json={
-                    "model": ANTHROPIC_MODEL,
+                    "model": model or ANTHROPIC_MODEL,
                     "max_tokens": max_tokens,
                     "system": system + "\n\nCavabı YALNIZ etibarlı JSON kimi qaytar, başqa mətn yazma.",
                     "messages": [{"role": "user", "content": user}],
