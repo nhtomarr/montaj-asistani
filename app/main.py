@@ -1,5 +1,6 @@
 """Veb server: telefon agenti üçün API, fayl paylaşımı (/media), sadə panel və yükləmə."""
 import asyncio
+import os
 import contextlib
 import hmac
 import logging
@@ -70,6 +71,10 @@ import sites  # noqa: E402
 from fastapi.responses import FileResponse, Response  # noqa: E402
 
 app.include_router(setup_router)
+import auth  # noqa: E402
+
+app.include_router(auth.router)
+app.middleware("http")(auth.middleware)
 from jarvis.web import router as jarvis_router  # noqa: E402
 
 app.include_router(jarvis_router)
@@ -96,12 +101,10 @@ async def serve_sites(request: Request, call_next):
 @app.get("/api/tls-ask")
 def tls_ask(domain: str = ""):
     """Caddy on-demand TLS: yalnız tanınan saytlar üçün sertifikat alınsın."""
-    return Response(status_code=200 if sites.resolve_host(domain) else 404)
+    panel = {d.strip().lower() for d in os.getenv("PANEL_DOMAINS", "").split(",") if d.strip()}
+    return Response(status_code=200 if (sites.resolve_host(domain) or domain.lower() in panel) else 404)
 
 
-@app.get("/", response_class=HTMLResponse)
-def root():
-    return "<meta name=viewport content='width=device-width'><p style='font:16px system-ui;padding:20px'>Montaj Asistanı işləyir.</p>"
 
 
 def _check_panel(t: str | None):

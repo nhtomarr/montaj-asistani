@@ -18,6 +18,8 @@ RESTART_FLAG = config.DATA_DIR / ".restart"
 
 FIELDS = [
     # (açar, etiket, gizli?, kömək)
+    ("PANEL_PASSWORD", "Panel şifrəsi (qısa giriş üçün)", True, "Jarvis-ə /login ilə bu şifrə ilə girəcəksiniz"),
+    ("PANEL_DOMAINS", "Panel üçün öz domen(lər)iniz", False, "məs. jarvis.pilothayat.az — DNS-də A qeydi serverin IP-sinə"),
     ("TELEGRAM_BOT_TOKEN", "Telegram bot token", True, "Telegram → @BotFather → /newbot"),
     ("TELEGRAM_API_ID", "Telegram API ID", False, "my.telegram.org → API development tools"),
     ("TELEGRAM_API_HASH", "Telegram API HASH", True, "eyni səhifədən"),
