@@ -68,6 +68,18 @@ def voice_token(t: str | None = None):
     return {"token": r.json()["token"], "agent_id": AGENT_ID, "session_key": _session_key()}
 
 
+@router.get("/api/jarvis/voice-ws")
+def voice_ws(t: str | None = None):
+    """iPhone proqramı üçün: ElevenLabs WebSocket imzalı ünvanı (kilidli ekranda da işləyir)."""
+    _check(t)
+    import httpx
+    r = httpx.get("https://api.elevenlabs.io/v1/convai/conversation/get-signed-url", params={"agent_id": AGENT_ID},
+                  headers={"xi-api-key": config.ELEVENLABS_API_KEY}, timeout=20)
+    if r.status_code != 200:
+        raise HTTPException(502, f"ElevenLabs: {r.text[:200]}")
+    return {"signed_url": r.json()["signed_url"], "session_key": _session_key()}
+
+
 # ---------- panel API
 @router.get("/api/jarvis/overview")
 def overview(t: str | None = None):
