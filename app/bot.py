@@ -364,6 +364,17 @@ async def cmd_mac(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(mac.install_command())
 
 
+async def cmd_panel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    base = config.PUBLIC_URL
+    await update.message.reply_text(
+        "🔐 Jarvis paneli (bu linki bir dəfə açın — brauzer 1 il yadda saxlayır, sonra sadəcə "
+        f"{base} kifayətdir):")
+    await update.message.reply_text(f"{base}/jarvis?t={config.PANEL_TOKEN}")
+    await update.message.reply_text(f"⚙️ Ayarlar: {base}/setup?t={config.PANEL_TOKEN}")
+
+
 async def cmd_update(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not _allowed(update):
         return
@@ -580,6 +591,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("yenile", cmd_update))
     app.add_handler(CommandHandler("profil", cmd_profile))
     app.add_handler(CommandHandler("mac", cmd_mac))
+    app.add_handler(CommandHandler(["panel", "link"], cmd_panel))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, on_video))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))
