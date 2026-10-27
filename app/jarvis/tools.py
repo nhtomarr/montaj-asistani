@@ -141,9 +141,9 @@ TOOLS = [
        "məs. 'Google Chrome', 'Final Cut Pro', 'Telegram', 'Safari'), quit_app, open_url (arg: URL), "
        "play_video (arg: 'reels' | 'long' | 'latest' | URL — son montajdan), screenshot, notify (arg: mətn), "
        "say (arg: Mac-in dinamikindən deyiləcək mətn), volume (arg: 0-100), media (arg: pause|play|mute|unmute), "
-       "lock, apps, shell (arg: terminal əmri — HƏMİŞƏ sahibin təsdiqi ilə icra olunur, yalnız lazım olanda).",
+       "lock, apps, perm_check (Mac icazələrini yoxla — xam nəticəni sahibə olduğu kimi de), shell (arg: terminal əmri — HƏMİŞƏ sahibin təsdiqi ilə icra olunur, yalnız lazım olanda).",
        {"action": {"type": "string", "enum": ["open_app", "quit_app", "open_url", "play_video", "screenshot", "notify",
-                                              "say", "volume", "media", "lock", "apps", "update", "shell"]}, "arg": STR},
+                                              "say", "volume", "media", "lock", "apps", "update", "perm_check", "shell"]}, "arg": STR},
        ["action"]),
     _s("system_status", "Sistem vəziyyəti: qoşulmuş xidmətlər, son video işi, təsdiq gözləyənlər.", {}),
 ]
@@ -404,8 +404,8 @@ def _wa_personal(to: str, text: str) -> dict:
     if not phone:
         r = mac.send("contacts", to.strip(), timeout=40)
         if not r.get("ok"):
-            return {"ok": False, "text": "Kontaktlara baxa bilmədim: " + r.get("text", "") +
-                    " (Sistem Ayarları → Gizlilik → Otomasyon: Jarvis → Kişiler-i yandırın)"}
+            return {"ok": False, "text": "Kontaktlara baxa bilmədim. Xam xəta: " + r.get("text", "")[:300],
+                    "alternativ": "mac_task ilə WhatsApp-ı açıb axtarışda adı tapıb yazmaq olar — sahibə təklif et"}
         people = []
         for line in r["text"].splitlines():
             nm, _, phs = line.partition(": ")

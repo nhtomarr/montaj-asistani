@@ -22,7 +22,7 @@ SHOTS.mkdir(parents=True, exist_ok=True)
 
 ACTIONS = ("open_app", "quit_app", "open_url", "play_video", "screenshot", "notify", "play_audio",
            "volume", "media", "lock", "apps", "shell", "contacts", "whatsapp", "update",
-           "shot", "click", "type", "key", "scroll")
+           "shot", "click", "type", "key", "scroll", "perm_check")
 
 
 def key() -> str:
@@ -146,6 +146,11 @@ run() { # id action arg
         *) ok=0; out="naməlum" ;; esac ;;
     lock) pmset displaysleepnow; out="ekran kilidləndi" ;;
     apps) out=$(osascript -e 'tell application "System Events" to get name of every process whose background only is false' 2>&1) || ok=0 ;;
+    perm_check)
+      c1=$(osascript -e 'tell application "Contacts" to count people' 2>&1)
+      c2=$(osascript -e 'tell application "System Events" to get name of first process' 2>&1)
+      rm -f "$DIR/pc.png"; screencapture -x -m "$DIR/pc.png" 2>&1; [[ -s "$DIR/pc.png" ]] && c3="ok" || c3="YOX"
+      out="Kontaktlar: $c1 | System Events: $c2 | Ekran: $c3 | proses: $(ps -o comm= -p $PPID) " ;;
     shot) f="$DIR/op.png"; rm -f "$f" "$DIR/op.jpg"; screencapture -x -m "$f" 2>/dev/null
       if [[ -s "$f" ]]; then
         sips --resampleWidth 1280 -s format jpeg -s formatOptions 70 "$f" --out "$DIR/op.jpg" >/dev/null 2>&1
@@ -227,12 +232,13 @@ cat > "$PL" <<PLIST_EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>az.jarvis.agent</string>
-<key>ProgramArguments</key><array><string>$APP/Contents/MacOS/applet</string></array>
+<key>ProgramArguments</key><array><string>/usr/bin/open</string><string>-W</string><string>-g</string><string>-a</string><string>$APP</string></array>
 <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
 <key>StandardErrorPath</key><string>$DIR/agent.log</string>
 </dict></plist>
 PLIST_EOF
 pkill -f "$DIR/agent.zsh" 2>/dev/null || true
+pkill -f "Jarvis.app/Contents/MacOS/applet" 2>/dev/null || true
 launchctl bootout gui/$(id -u)/az.jarvis.agent 2>/dev/null || true
 sleep 1
 launchctl bootstrap gui/$(id -u) "$PL"
