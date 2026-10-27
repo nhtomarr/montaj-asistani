@@ -93,7 +93,7 @@ input::placeholder{color:#4f8c72}
 
 <div class="top">
  <div><div class="logo" id="logo">J.A.R.V.I.S<small>NEURAL CORE · v2.0</small></div>
- <div style="margin-top:10px"><span class="pill"><span class="dot"></span><span id="sysState">ONLINE</span></span><button class="theme" id="themeBtn">TEMA</button></div></div>
+ <div style="margin-top:10px"><span class="pill"><span class="dot"></span><span id="sysState">ONLINE</span></span><button class="theme" id="themeBtn">TEMA</button><button class="theme" id="humBtn">FON SƏSİ: AÇIQ</button></div></div>
  <div class="clock"><b id="clk">--:--:--</b><div id="dte"></div></div>
 </div>
 
@@ -131,9 +131,10 @@ function ac(){if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
 function beep(f=880,d=.06,type='sine',v=.15,slide=0){try{const a=ac(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;
 if(slide)o.frequency.exponentialRampToValueAtTime(f*slide,a.currentTime+d);g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);
 o.connect(g);g.connect(master);o.start();o.stop(a.currentTime+d)}catch(e){}}
-function hum(){try{const a=ac(),o=a.createOscillator(),o2=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();
+let humGain=null,humOn=true;try{humOn=localStorage.getItem('jv_hum')!=='0'}catch(e){}
+function hum(){try{const a=ac(),o=a.createOscillator(),o2=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();humGain=g;
 o.type='sawtooth';o.frequency.value=55;o2.type='sine';o2.frequency.value=110.5;lp.type='lowpass';lp.frequency.value=320;g.gain.value=0;
-o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(master);o.start();o2.start();g.gain.linearRampToValueAtTime(.05,a.currentTime+2.5);
+o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(master);o.start();o2.start();g.gain.linearRampToValueAtTime(humOn?.05:0,a.currentTime+2.5);
 beep(220,1.2,'sine',.12,4)}catch(e){}}
 /* ===== audio analizator (halqa səsə reaksiya verir) ===== */
 let analyser=null,level=0,abuf=null;
@@ -145,6 +146,9 @@ function applyTheme(){document.documentElement.dataset.theme=theme==='blue'?'blu
 const cs=getComputedStyle(document.documentElement);PAL.rgb=cs.getPropertyValue('--rgb').trim();PAL.gold=cs.getPropertyValue('--gold').trim();PAL.bg=cs.getPropertyValue('--bg').trim();
 document.querySelector('meta[name=theme-color]').content=PAL.bg}
 const PAL={};
+function humLabel(){$('humBtn').textContent='FON SƏSİ: '+(humOn?'AÇIQ':'BAĞLI')}humLabel();
+$('humBtn').onclick=()=>{humOn=!humOn;try{localStorage.setItem('jv_hum',humOn?'1':'0')}catch(e){}humLabel();
+if(!humGain&&humOn){hum();return}if(humGain){const a=ac();humGain.gain.cancelScheduledValues(a.currentTime);humGain.gain.setTargetAtTime(humOn?.05:0,a.currentTime,.3)}};
 $('themeBtn').onclick=()=>{theme=theme==='blue'?'green':'blue';try{localStorage.setItem('jv_theme',theme)}catch(e){}applyTheme();beep(700,.06)};
 /* ===== vizual: axınlar + hissəciklər + nüvə + modul şəbəkəsi ===== */
 const cv=$('fx'),cx=cv.getContext('2d');let W,H,DPR,CX,CY,R,mob,RX,RY;
