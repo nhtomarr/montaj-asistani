@@ -129,6 +129,12 @@ TOOLS = [
         "request": STR}, ["action"]),
     _s("telegram_send", "Sahibə Telegram-da mesaj göndər (uzun nəticələr, linklər, siyahılar — xüsusən səsli söhbətdə).",
        {"text": STR}, ["text"]),
+    _s("mac_task", "Mac-də ÇOXADDIMLI tapşırıq (ekrana baxıb siçan/klaviatura ilə işləyir): məs. 'Instagram-ı brauzerdə "
+       "aç, son videoya gir, baxış və şərhləri de', 'YouTube Studio-da son videonun statistikasını yoxla', 'Chrome-da "
+       "X saytında formu doldur'. Arxa fonda işləyir, nəticə Telegram-a gəlir. Sadə tək əmrlər üçün mac_control işlət.",
+       {"task": STR}, ["task"]),
+    _s("mac_task_status", "Mac-də gedən çoxaddımlı tapşırığın vəziyyəti; stop=true dayandırır.",
+       {"stop": {"type": "boolean"}}),
     _s("mac_control", "Sahibin Mac kompüterini (iMac) idarə et: proqram aç/bağla, sayt aç, montaj olunmuş videonu "
        "ekranda tam ekran oynat, ekran şəkli çək (Telegram-a göndərilir), bildiriş, Mac-dən səsli danış, səs səviyyəsi, "
        "musiqi/videonu dayandır, ekranı kilidlə, açıq proqramlar. action-lar: open_app (arg: proqram adı, "
@@ -340,6 +346,14 @@ def _run(name: str, a: dict, ctx: dict) -> str:
                         "xəta": (j["error"] or "")[:200],
                         **({"canlı": pipeline.LIVE[j["id"]]} if j["status"] == "running" and j["id"] in pipeline.LIVE else {})})
         return _ok(out)
+    if name == "mac_task":
+        from jarvis import mac_operator as operator
+        return _ok(operator.start(a["task"]))
+    if name == "mac_task_status":
+        from jarvis import mac_operator as operator
+        if a.get("stop"):
+            operator.STATE["stop"] = True
+        return _ok(operator.status())
     if name == "mac_control":
         return _ok(_mac(a.get("action", ""), str(a.get("arg") or "")))
     if name == "telegram_send":

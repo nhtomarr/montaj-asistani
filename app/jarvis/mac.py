@@ -21,7 +21,8 @@ SHOTS = config.PUBLIC_DIR / "mac"
 SHOTS.mkdir(parents=True, exist_ok=True)
 
 ACTIONS = ("open_app", "quit_app", "open_url", "play_video", "screenshot", "notify", "play_audio",
-           "volume", "media", "lock", "apps", "shell", "contacts", "whatsapp", "update")
+           "volume", "media", "lock", "apps", "shell", "contacts", "whatsapp", "update",
+           "shot", "click", "type", "key", "scroll")
 
 
 def key() -> str:
@@ -43,7 +44,7 @@ def send(action: str, arg: str = "", timeout: float = 45) -> dict:
         return {"ok": False, "text": f"naməlum əmr {action}"}
     if not online():
         return {"ok": False, "text": "Mac oflayndır (söndürülüb, yuxudadır və ya köməkçi quraşdırılmayıb)."}
-    if action not in ("shell", "whatsapp"):
+    if action not in ("shell", "whatsapp", "type"):
         arg = arg.replace('"', "'").replace("\\", "")
     cid = uuid.uuid4().hex[:12]
     with _cv:
@@ -105,6 +106,7 @@ def install(k: str = ""):
 
 AGENT = r'''#!/bin/zsh
 # Jarvis Mac köməkçisi — serverdən əmr alır, icra edir, nəticəni qaytarır.
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 SERVER="__SERVER__"; KEY="__KEY__"; DIR="$HOME/.jarvis"; MOV="$HOME/Movies/Jarvis"
 mkdir -p "$DIR" "$MOV"
 if [[ ! -f "$DIR/.perm" ]]; then  # ilk işə düşəndə macOS icazə pəncərələrini bir dəfə çıxart
@@ -144,6 +146,35 @@ run() { # id action arg
         *) ok=0; out="naməlum" ;; esac ;;
     lock) pmset displaysleepnow; out="ekran kilidləndi" ;;
     apps) out=$(osascript -e 'tell application "System Events" to get name of every process whose background only is false' 2>&1) || ok=0 ;;
+    shot) f="$DIR/op.png"; rm -f "$f" "$DIR/op.jpg"; screencapture -x -m "$f" 2>/dev/null
+      if [[ -s "$f" ]]; then
+        sips --resampleWidth 1280 -s format jpeg -s formatOptions 70 "$f" --out "$DIR/op.jpg" >/dev/null 2>&1
+        pw=$(osascript -l JavaScript -e 'ObjC.import("AppKit"); $.NSScreen.mainScreen.frame.size.width')
+        reply $id 1 "$pw 1280" "$DIR/op.jpg"; return
+      else ok=0; out="Ekran şəkli alınmadı — Ekran Kaydı bölməsinə Jarvis.app əlavə edin"; fi ;;
+    click) out=$(JA="$arg" osascript -l JavaScript -e '
+        ObjC.import("CoreGraphics"); ObjC.import("stdlib");
+        var a=$.getenv("JA").split(" "), p={x:+a[0], y:+a[1]}, r=(a[2]=="right"), n=+(a[3]||1);
+        function ev(t,c){var e=$.CGEventCreateMouseEvent(null,t,p,r?1:0); if(c) $.CGEventSetIntegerValueField(e,1,c); $.CGEventPost(0,e);}
+        ev(5,0); delay(0.05);
+        for (var i=1;i<=n;i++){ ev(r?3:1,i); ev(r?4:2,i); delay(0.05); }
+        "klik " + a[0] + "," + a[1];' 2>&1) || ok=0 ;;
+    type) print -rn -- "$arg" | pbcopy
+      out=$(osascript -e 'tell application "System Events" to keystroke "v" using command down' 2>&1) || ok=0; out=${out:-"yazıldı"} ;;
+    key) k=${arg##*+}; mods=""
+      [[ $arg == *cmd+* || $arg == *command+* ]] && mods+="command down, "
+      [[ $arg == *shift+* ]] && mods+="shift down, "
+      [[ $arg == *alt+* || $arg == *option+* ]] && mods+="option down, "
+      [[ $arg == *ctrl+* || $arg == *control+* ]] && mods+="control down, "
+      mods=${mods%, }
+      case $k in return|enter) kc=36;; tab) kc=48;; space) kc=49;; delete|backspace) kc=51;; esc|escape) kc=53;;
+        left) kc=123;; right) kc=124;; down) kc=125;; up) kc=126;; pagedown) kc=121;; pageup) kc=116;; home) kc=115;; end) kc=119;; *) kc="";; esac
+      if [[ -n $kc ]]; then c="key code $kc"; else c="keystroke \"${k//\"/}\""; fi
+      [[ -n $mods ]] && c="$c using {$mods}"
+      out=$(osascript -e "tell application \"System Events\" to $c" 2>&1) || ok=0; out=${out:-"ok"} ;;
+    scroll) out=$(JA="$arg" osascript -l JavaScript -e '
+        ObjC.import("CoreGraphics"); ObjC.import("stdlib");
+        var d=+$.getenv("JA"); var e=$.CGEventCreateScrollWheelEvent2(null,0,1,d,0,0); $.CGEventPost(0,e); "ok"' 2>&1) || ok=0 ;;
     contacts) out=$(osascript -e "tell application \"Contacts\"" -e "set o to \"\"" \
         -e "repeat with p in (every person whose name contains \"$arg\")" -e "set o to o & name of p & \": \"" \
         -e "repeat with ph in phones of p" -e "set o to o & (value of ph) & \", \"" -e "end repeat" \
