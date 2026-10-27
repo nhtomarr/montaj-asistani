@@ -74,7 +74,7 @@ input::placeholder{color:#4f8c72}
 #boot .go{margin-top:22px;font:600 12px "JetBrains Mono";letter-spacing:.4em;color:#000;background:var(--g);border:0;padding:14px 26px;border-radius:8px;box-shadow:0 0 40px var(--g);cursor:pointer;opacity:0;transition:opacity .5s}
 .flash{animation:flash .5s}@keyframes flash{0%{filter:brightness(2.5)}100%{filter:none}}
 /* mobil */
-@media (max-width:980px){
+@media (max-width:1100px){
  html,body{overflow:auto}
  .side{position:relative;top:auto;bottom:auto;left:auto!important;right:auto!important;width:auto;margin:0 14px 12px;overflow:visible}
  html,body{height:auto}
@@ -149,7 +149,7 @@ $('themeBtn').onclick=()=>{theme=theme==='blue'?'green':'blue';try{localStorage.
 /* ===== vizual: axınlar + hissəciklər + nüvə + modul şəbəkəsi ===== */
 const cv=$('fx'),cx=cv.getContext('2d');let W,H,DPR,CX,CY,R,mob,RX,RY;
 function size(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);
-mob=W<980;CX=W/2;
+mob=W<=1100;CX=W/2;
 if(mob){R=Math.min(W*.2,110);CY=Math.min(W*.49,280)+90;RX=W*.40;RY=Math.min(W*.42,250)}
 else{const free=W-2*Math.min(340,W*.26)-80;R=Math.min(free*.16,H*.13);CY=H*.43;RX=Math.min(free*.47,R*3.3);RY=Math.min(H*.3,R*2.5)}}
 addEventListener('resize',size);
@@ -161,8 +161,8 @@ const NODES=[['ARAŞDIRMA',['web_search','web_fetch']],['YADDAŞ',['memory_save'
 ['TELEGRAM',[],'TELEGRAM'],['TELEFON',[],'ELEVENLABS'],['WHATSAPP',['whatsapp_conversations','whatsapp_read','whatsapp_send','leads_list','knowledge_add'],'WHATSAPP'],['REKLAM',['ads_accounts','ads_report','ads_campaigns','ads_set_status','ads_set_budget','ads_copy_campaign'],'ADS'],['NƏZARƏT',['monitor_status','monitor_check','monitor_add','monitor_remove'],'NƏZARƏT']].map((n,i,arr)=>({name:n[0],tools:n[1],mod:n[2],
 a:-Math.PI/2+i/arr.length*Math.PI*2+(i%2?.12:-.12),k:i%2?1.0:.82,heat:0,on:true,sat:[Math.random()*2-1,Math.random()*2-1]}));
 const toolMap={};NODES.forEach(n=>n.tools.forEach(t=>toolMap[t]=n));
-const P=[];for(let i=0;i<(innerWidth<980?110:240);i++)P.push({x:Math.random(),y:Math.random(),z:Math.random(),s:Math.random()*1.8+.3,p:Math.random()*6.28});
-const STREAMS=[];for(let i=0;i<(innerWidth<980?5:9);i++)STREAMS.push({y0:Math.random(),y1:Math.random(),c1:Math.random(),c2:Math.random(),sp:.2+Math.random()*.6,off:Math.random()*100});
+const P=[];for(let i=0;i<(innerWidth<=1100?110:240);i++)P.push({x:Math.random(),y:Math.random(),z:Math.random(),s:Math.random()*1.8+.3,p:Math.random()*6.28});
+const STREAMS=[];for(let i=0;i<(innerWidth<=1100?5:9);i++)STREAMS.push({y0:Math.random(),y1:Math.random(),c1:Math.random(),c2:Math.random(),sp:.2+Math.random()*.6,off:Math.random()*100});
 let mode='idle',t=0,amp=.2,spin=0,flashT=0,px=0,py=0,bootT=0,booted=false,pulses=[];
 addEventListener('pointermove',e=>{px=(e.clientX/W-.5);py=(e.clientY/H-.5)});
 const N=(a,t,k)=>Math.sin(a*3+t*1.3+k)*.5+Math.sin(a*7-t*2.1+k*2)*.3+Math.sin(a*13+t*3.7-k)*.2;

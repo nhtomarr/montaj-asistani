@@ -9,26 +9,27 @@ import httpx
 import config
 
 
-def transcribe(audio_path: str | Path, with_words: bool = True) -> dict:
+def transcribe(audio_path: str | Path, with_words: bool = True, language: str | None = None) -> dict:
     p = config.STT_PROVIDER.lower()
+    lang = language if language is not None else config.STT_LANGUAGE
     if p == "elevenlabs":
-        return _elevenlabs(audio_path)
+        return _elevenlabs(audio_path, lang)
     if p == "openai":
-        return _openai(audio_path)
+        return _openai(audio_path, lang)
     if p == "local":
-        return _local(audio_path)
+        return _local(audio_path, lang)
     raise ValueError(f"Naməlum STT_PROVIDER: {p}")
 
 
-def _elevenlabs(path) -> dict:
+def _elevenlabs(path, lang: str = "") -> dict:
     data = {
         "model_id": config.ELEVENLABS_STT_MODEL,
         "timestamps_granularity": "word",
         "tag_audio_events": "false",
         "diarize": "false",
     }
-    if config.STT_LANGUAGE:
-        data["language_code"] = config.STT_LANGUAGE
+    if lang:
+        data["language_code"] = lang
     with open(path, "rb") as f:
         r = httpx.post(
             "https://api.elevenlabs.io/v1/speech-to-text",
@@ -47,7 +48,7 @@ def _elevenlabs(path) -> dict:
     return {"language": j.get("language_code", ""), "text": j.get("text", ""), "words": words}
 
 
-def _openai(path) -> dict:
+def _openai(path, lang: str = "") -> dict:
     # Fayl 25 MB-dan kiçik olmalıdır (32 kbps mp3 ≈ 100 dəqiqə)
     data = [
         ("model", "whisper-1"),
@@ -55,8 +56,8 @@ def _openai(path) -> dict:
         ("timestamp_granularities[]", "word"),
         ("timestamp_granularities[]", "segment"),
     ]
-    if config.STT_LANGUAGE:
-        data.append(("language", config.STT_LANGUAGE[:2]))
+    if lang:
+        data.append(("language", lang[:2]))
     with open(path, "rb") as f:
         r = httpx.post(
             "https://api.openai.com/v1/audio/transcriptions",
@@ -90,7 +91,7 @@ def _restore_punct(words: list, segments: list) -> None:
 _local_model = None
 
 
-def _local(path) -> dict:
+def _local(path, lang_code: str = "") -> dict:
     """Serverdə yerli Whisper (API açarı lazım deyil, amma CPU-da yavaşdır)."""
     global _local_model
     from faster_whisper import WhisperModel
@@ -103,7 +104,7 @@ def _local(path) -> dict:
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
                          capture_output=True, check=True).stdout
     audio = np.frombuffer(raw, dtype=np.float32)
-    lang = config.STT_LANGUAGE[:2] if config.STT_LANGUAGE else None
+    lang = lang_code[:2] if lang_code else None
     segs, info = _local_model.transcribe(audio, language=lang, word_timestamps=True, vad_filter=True)
     words, texts = [], []
     for s in segs:
@@ -115,5 +116,7 @@ def _local(path) -> dict:
 
 
 def transcribe_short(audio_path) -> str:
-    """Səsli mesaj (əmr) üçün sadə mətn."""
-    return transcribe(audio_path).get("text", "").strip()
+    """Səsli əmr üçün mətn. Qısa yazılarda dili avtomatik tanımaq səhv olur (məs. norveç), ona görə
+    COMMAND_LANGUAGE (default: Azərbaycan dili) ilə tanıyırıq."""
+    import os
+    return transcribe(audio_path, language=os.getenv("COMMAND_LANGUAGE", "aze")).get("text", "").strip()
