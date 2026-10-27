@@ -207,6 +207,13 @@ def page(t: str | None = None):
     return (Path(__file__).parent / "jarvis.html").read_text(encoding="utf-8").replace("__TOKEN__", t)
 
 
+@router.get("/zeng", response_class=HTMLResponse)
+def call_page(t: str | None = None):
+    """Telefon zəngi kimi fasiləsiz səsli söhbət (iPhone ana ekranı / qısayol üçün)."""
+    _check(t)
+    return (Path(__file__).parent / "zeng.html").read_text(encoding="utf-8").replace("__TOKEN__", t)
+
+
 def _sysinfo() -> dict:
     out = {}
     try:

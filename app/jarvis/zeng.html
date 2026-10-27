@@ -1,0 +1,56 @@
+<!doctype html><html lang="az"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#020a14"><title>Jarvis zəng</title>
+<script src="https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.27.0/dist/lib.iife.js"></script>
+<style>
+:root{--c:92,200,255;--g:74,255,160}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#020a14;color:#e3f4ff;font:16px system-ui,-apple-system,sans-serif;overflow:hidden}
+main{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 28px)}
+h1{margin:0;font-size:15px;letter-spacing:.45em;color:rgb(var(--c));opacity:.85}
+#st{font-size:13px;letter-spacing:.25em;color:rgba(var(--c),.8);margin-top:8px;min-height:18px;text-align:center}
+.orb{position:relative;width:min(62vw,300px);aspect-ratio:1;border-radius:50%;cursor:pointer}
+.orb i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(var(--c),.55);animation:spin 9s linear infinite}
+.orb i:nth-child(2){inset:9%;border-style:dashed;border-color:rgba(var(--c),.35);animation-duration:14s;animation-direction:reverse}
+.orb i:nth-child(3){inset:20%;border-width:1px;border-color:rgba(var(--c),.25);animation-duration:22s}
+.orb b{position:absolute;inset:30%;border-radius:50%;background:radial-gradient(circle,rgba(var(--c),.95),rgba(var(--c),.25) 55%,transparent 72%);
+ transform:scale(calc(.85 + var(--lv,0)*.9));transition:transform .08s linear;box-shadow:0 0 60px rgba(var(--c),.45)}
+.speak{--c:var(--g)} .think .orb i{animation-duration:2.5s}
+@keyframes spin{to{transform:rotate(360deg)}}
+#txt{width:100%;max-width:520px;min-height:90px;text-align:center;font-size:17px;line-height:1.45;color:#fff}
+#txt small{display:block;color:rgba(var(--c),.75);font-size:13px;margin-bottom:6px}
+button{border:0;border-radius:999px;padding:18px 34px;font-size:17px;font-weight:700;color:#021;background:rgb(var(--g));box-shadow:0 0 30px rgba(var(--g),.35)}
+button.end{background:#ff4d5e;color:#fff;box-shadow:0 0 30px rgba(255,77,94,.35)}
+</style></head><body><main id="m">
+<div style="text-align:center"><h1>J.A.R.V.I.S</h1><div id="st">ZƏNGƏ HAZIR</div></div>
+<div class="orb" id="orb"><i></i><i></i><i></i><b id="core"></b></div>
+<div id="txt"></div>
+<button id="btn">📞 Zəng et</button>
+</main><script>
+const T="__TOKEN__";let conv=null,busy=false,lock=null,raf=0;
+const $=id=>document.getElementById(id),m=$('m');
+function state(s,t){m.className=s;$('st').textContent=t}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function meter(){if(!conv)return;let v=0;try{v=Math.max(conv.getInputVolume?conv.getInputVolume():0,conv.getOutputVolume?conv.getOutputVolume():0)}catch(e){}
+$('core').style.setProperty('--lv',Math.min(1,v*2.2).toFixed(3));raf=requestAnimationFrame(meter)}
+async function start(){if(conv||busy)return;busy=true;state('think','QOŞULUR…');
+try{const r=await fetch('/api/jarvis/voice-token?t='+T);if(!r.ok)throw new Error('server '+r.status);const k=await r.json();
+conv=await ElevenLabsClient.Conversation.startSession({conversationToken:k.token,connectionType:'webrtc',dynamicVariables:{session_key:k.session_key},
+ onConnect:()=>{state('','DİNLƏYİRƏM');$('btn').textContent='Zəngi bitir';$('btn').className='end';meter()},
+ onDisconnect:()=>{end(true)},
+ onModeChange:({mode})=>{if(conv)state(mode==='speaking'?'speak':'',mode==='speaking'?'DANIŞIRAM':'DİNLƏYİRƏM')},
+ onMessage:({message,source})=>{message=String(message||'').replace(/\[[a-zA-Z ]{2,20}\]\s*/g,'');
+  if(source==='user')$('txt').innerHTML='<small>› '+esc(message)+'</small>';else $('txt').innerHTML=($('txt').querySelector('small')?.outerHTML||'')+esc(message)},
+ onAgentToolRequest:()=>state('think','İCRA EDİRƏM…'),
+ onError:e=>{$('txt').textContent='Xəta: '+e}});
+try{lock=await navigator.wakeLock?.request('screen')}catch(e){}
+}catch(e){conv=null;state('','ZƏNGƏ HAZIR');$('txt').textContent='Qoşulmaq alınmadı: '+(e.message||e)+'. Mikrofon icazəsini yoxlayın.'}
+busy=false}
+async function end(remote){const c=conv;conv=null;cancelAnimationFrame(raf);$('core').style.setProperty('--lv',0);
+if(c&&!remote){try{await c.endSession()}catch(e){}}try{lock&&lock.release()}catch(e){}lock=null;
+state('','ZƏNG BİTDİ');$('btn').textContent='📞 Zəng et';$('btn').className=''}
+$('btn').onclick=()=>conv?end():start();$('orb').onclick=()=>conv?null:start();
+document.addEventListener('visibilitychange',async()=>{if(!document.hidden&&conv&&!lock){try{lock=await navigator.wakeLock?.request('screen')}catch(e){}}});
+if(new URLSearchParams(location.search).get('auto')==='1')start();
+</script></body></html>

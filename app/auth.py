@@ -29,7 +29,7 @@ async def middleware(request: Request, call_next):
     qs = parse_qs(request.scope.get("query_string", b"").decode())
     t = (qs.get("t") or [""])[0]
     valid_t = bool(config.PANEL_TOKEN) and bool(t) and hmac.compare_digest(t, config.PANEL_TOKEN)
-    if not t and not has_cookie(request) and request.url.path in ("/jarvis", "/panel"):
+    if not t and not has_cookie(request) and request.url.path in ("/jarvis", "/panel", "/zeng"):
         return RedirectResponse("/login", 303)
     if not t and has_cookie(request):
         # Kukisi olan istifadəçi üçün tokeni gizlicə əlavə edirik — bütün səhifələr və API-lər işləyir
