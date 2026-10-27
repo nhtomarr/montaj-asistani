@@ -1,0 +1,35 @@
+name: iOS Jarvis
+on:
+  push:
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: XcodeGen
+        run: |
+          curl -fsSL -o xg.zip https://github.com/yonaskolb/XcodeGen/releases/latest/download/xcodegen.zip
+          unzip -oq xg.zip -d xg
+          cd ios/Jarvis && ../../xg/xcodegen/bin/xcodegen generate
+      - name: Build (imzasız)
+        run: |
+          cd ios/Jarvis
+          xcodebuild -project Jarvis.xcodeproj -scheme Jarvis -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -40
+          test -d build/Build/Products/Release-iphoneos/Jarvis.app
+      - name: IPA
+        run: |
+          cd ios/Jarvis
+          mkdir -p Payload && cp -R build/Build/Products/Release-iphoneos/Jarvis.app Payload/
+          zip -qry Jarvis.ipa Payload
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ios-latest -y --cleanup-tag || true
+          gh release create ios-latest ios/Jarvis/Jarvis.ipa -t "Jarvis iPhone" -n "Sideloadly ilə quraşdırın" --latest=false
