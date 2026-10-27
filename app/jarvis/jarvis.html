@@ -231,7 +231,13 @@ const cr=R*.12*(1+amp*.6+Math.sin(t*4)*.04);g=cx.createRadialGradient(CX,CY,0,CX
 if(mode==='think'){for(let i=0;i<6;i++){const a=t*3+i*1.047,r=R*.7;cx.fillStyle='rgba(255,236,170,.9)';cx.beginPath();cx.arc(CX+r*Math.cos(a),CY+r*Math.sin(a),2.3,0,7);cx.fill()}
 if(Math.random()<dt*2.4)fire(NODES[(Math.random()*NODES.length)|0])}
 if(flashT>0){cx.globalCompositeOperation='source-over';cx.fillStyle=rgba(Math.min(.3,flashT*.2));cx.fillRect(0,0,W,H);flashT-=dt*3}
-drawWave();requestAnimationFrame(frame)}
+drawWave();schedule()}
+// Kompüteri yükləməmək: boşda 15 kadr/s, gizli tab-da tam dayanır, səs mühərriki də yatır
+let lastAct=performance.now();['pointermove','pointerdown','keydown','touchstart','wheel'].forEach(e=>addEventListener(e,()=>lastAct=performance.now(),{passive:true}));
+function busy(){return performance.now()-lastAct<20000||level>.03||(typeof conv!=='undefined'&&!!conv)}
+let sched=false;function schedule(){if(document.hidden||sched)return;sched=true;const go=()=>{sched=false;requestAnimationFrame(frame)};busy()?go():setTimeout(go,66)}
+document.addEventListener('visibilitychange',()=>{try{if(AC){document.hidden&&!(typeof conv!=='undefined'&&conv)?AC.suspend():AC.resume()}}catch(e){}
+if(!document.hidden){lastF=performance.now();schedule()}});
 // fırlanan mətn — keşlənmiş
 let RT=null,RTkey='';
 function ringText(){const key=[R,DPR,PAL.rgb,mob].join('|');if(RT&&RTkey===key)return RT;RTkey=key;
