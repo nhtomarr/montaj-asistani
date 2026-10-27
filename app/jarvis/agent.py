@@ -153,11 +153,11 @@ def tts(text: str) -> bytes | None:
     key = config.ELEVENLABS_API_KEY
     if not key or not text:
         return None
-    voice = os.getenv("JARVIS_VOICE_ID", "cjVigY5qzO86Huf0OWal")
+    voice = os.getenv("JARVIS_VOICE_ID", "IVMbfLv3KqUc4qDj6Yif")
     r = httpx.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}",
                    params={"output_format": "mp3_44100_64"},
                    headers={"xi-api-key": key, "content-type": "application/json"},
-                   json={"text": text[:1500], "model_id": os.getenv("JARVIS_TTS_MODEL", "eleven_v4_turbo")},
+                   json={"text": text[:1500], "model_id": os.getenv("JARVIS_TTS_MODEL", "eleven_v4_turbo"), "language_code": "az"},
                    timeout=60)
     return r.content if r.status_code == 200 else None
 
