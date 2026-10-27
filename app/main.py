@@ -78,6 +78,9 @@ app.middleware("http")(auth.middleware)
 from jarvis.web import router as jarvis_router  # noqa: E402
 
 app.include_router(jarvis_router)
+from jarvis.mac import router as mac_router  # noqa: E402
+
+app.include_router(mac_router)
 
 
 @app.middleware("http")

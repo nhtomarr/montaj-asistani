@@ -348,6 +348,19 @@ async def cmd_delete_site(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Əminsiniz? Bu geri qaytarılmır.", reply_markup=kb)
 
 
+async def cmd_mac(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    from jarvis import mac
+
+    st = "🟢 Mac qoşuludur" + (f" ({mac._state['name']})" if mac._state["name"] else "") if mac.online() \
+        else "⚪️ Mac hələ qoşulmayıb"
+    await update.message.reply_text(
+        f"{st}\n\nQuraşdırmaq üçün Mac-də Terminal-ı açın və bu sətri yapışdırıb Enter basın:")
+    await update.message.reply_text(mac.install_command())
+    await update.message.reply_text("Sonra deyin: «sonuncu reelsi ekranda göstər», «Chrome-u aç», «ekran şəklini at».")
+
+
 async def cmd_update(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not _allowed(update):
         return
@@ -525,6 +538,12 @@ class TelegramSink:
             for i in range(0, len(text), 4000):
                 self._run(self.app.bot.send_message(chat, text[i:i + 4000], disable_web_page_preview=True))
 
+    def send_photo(self, path, caption=""):
+        chat = db.kv_get("owner_chat")
+        if chat:
+            with open(path, "rb") as f:
+                self._run(self.app.bot.send_photo(chat, f, caption=caption))
+
     def confirm_action(self, pid, summary):
         chat = db.kv_get("owner_chat")
         if not chat:
@@ -557,6 +576,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("saytsil", cmd_delete_site))
     app.add_handler(CommandHandler("yenile", cmd_update))
     app.add_handler(CommandHandler("profil", cmd_profile))
+    app.add_handler(CommandHandler("mac", cmd_mac))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, on_video))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

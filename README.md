@@ -200,3 +200,10 @@ app/uploaders/       YouTube, Instagram
 elevenlabs/          agent göstərişi və alətlər
 scripts/             YouTube token skripti
 ```
+
+## Mac kompüteri idarə etmək (iMac)
+Telegram-da `/mac` yazın — bot bir sətirlik quraşdırma əmri göndərir. Mac-də Terminal-a yapışdırıb Enter basın.
+Köməkçi arxa fonda işləyir (launchd), Mac özü serverə qoşulur (router ayarı lazım deyil).
+Jarvis-ə deyin: «sonuncu reelsi ekranda göstər», «Chrome-u aç», «ekran şəklini at», «musiqini dayandır», «Mac-dən de ki ...».
+Terminal əmrləri yalnız Telegram təsdiqi ilə icra olunur. Ekran şəkli üçün: Sistem Ayarları → Məxfilik → Ekran qeydi.
+Silmək: `launchctl bootout gui/$(id -u)/az.jarvis.agent; rm -rf ~/.jarvis ~/Library/LaunchAgents/az.jarvis.agent.plist`

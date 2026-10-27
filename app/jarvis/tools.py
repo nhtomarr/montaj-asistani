@@ -121,6 +121,16 @@ TOOLS = [
         "request": STR}, ["action"]),
     _s("telegram_send", "Sahibə Telegram-da mesaj göndər (uzun nəticələr, linklər, siyahılar — xüsusən səsli söhbətdə).",
        {"text": STR}, ["text"]),
+    _s("mac_control", "Sahibin Mac kompüterini (iMac) idarə et: proqram aç/bağla, sayt aç, montaj olunmuş videonu "
+       "ekranda tam ekran oynat, ekran şəkli çək (Telegram-a göndərilir), bildiriş, Mac-dən səsli danış, səs səviyyəsi, "
+       "musiqi/videonu dayandır, ekranı kilidlə, açıq proqramlar. action-lar: open_app (arg: proqram adı, "
+       "məs. 'Google Chrome', 'Final Cut Pro', 'Telegram', 'Safari'), quit_app, open_url (arg: URL), "
+       "play_video (arg: 'reels' | 'long' | 'latest' | URL — son montajdan), screenshot, notify (arg: mətn), "
+       "say (arg: Mac-in dinamikindən deyiləcək mətn), volume (arg: 0-100), media (arg: pause|play|mute|unmute), "
+       "lock, apps, shell (arg: terminal əmri — HƏMİŞƏ sahibin təsdiqi ilə icra olunur, yalnız lazım olanda).",
+       {"action": {"type": "string", "enum": ["open_app", "quit_app", "open_url", "play_video", "screenshot", "notify",
+                                              "say", "volume", "media", "lock", "apps", "shell"]}, "arg": STR},
+       ["action"]),
     _s("system_status", "Sistem vəziyyəti: qoşulmuş xidmətlər, son video işi, təsdiq gözləyənlər.", {}),
 ]
 
@@ -309,6 +319,8 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             r = {"ok": sites.undo(slug), "url": sites.site_url(slug)}
         store.log("sayt", f"Sayt ({act}): {r.get('url')}")
         return _ok(r)
+    if name == "mac_control":
+        return _ok(_mac(a.get("action", ""), str(a.get("arg") or "")))
     if name == "telegram_send":
         notify.sink.send_text(a["text"])
         return _ok({"status": "göndərildi"})
@@ -322,8 +334,48 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             "təsdiq_gözləyən": store.pending_open(), "rutinlər": len(store.routine_list()),
             "reklam": __import__("jarvis.ads", fromlist=["x"]).platforms(),
             "whatsapp": bool(os.getenv("WHATSAPP_TOKEN")),
+            "mac": __import__("jarvis.mac", fromlist=["x"]).online(),
         })
     return _ok({"xəta": f"naməlum alət {name}"})
+
+
+def _latest_output(which: str) -> str | None:
+    for j in db.list_jobs(15):
+        r = j["result"] or {}
+        for k in (["reels", "long"] if which in ("reels", "latest", "") else ["long", "reels"]):
+            if k == which or which in ("latest", ""):
+                if (r.get(k) or {}).get("url"):
+                    return r[k]["url"]
+    return None
+
+
+def _mac(action: str, arg: str) -> dict:
+    from jarvis import mac
+
+    if action == "shell":
+        if not mac.online():
+            return {"ok": False, "text": "Mac oflayndır."}
+        return json.loads(_approval("mac_shell", {"cmd": arg}, f"💻 Mac-də terminal əmri icra olunsun:\n{arg[:1500]}"))
+    if action == "play_video":
+        url = arg if arg.startswith("http") else _latest_output(arg.lower().strip())
+        if not url:
+            return {"ok": False, "text": "Hazır montaj olunmuş video tapılmadı."}
+        arg = url
+    if action == "say":
+        from jarvis.agent import tts
+        import uuid
+        audio = tts(arg)
+        if not audio:
+            return {"ok": False, "text": "Səs yaradılmadı (ElevenLabs)."}
+        p = mac.SHOTS / f"say_{uuid.uuid4().hex[:12]}.mp3"
+        p.write_bytes(audio)
+        action, arg = "play_audio", f"{config.PUBLIC_URL}/media/mac/{p.name}"
+    r = mac.send(action, arg, timeout=600 if action == "play_video" else 45)
+    if action == "screenshot" and r.get("file"):
+        notify.sink.send_photo(r["file"], "🖥 Mac ekranı")
+        r["text"] = "Ekran şəkli Telegram-a göndərildi."
+    store.log("mac", f"{action} {arg[:80]} → {r.get('text', '')[:80]}")
+    return r
 
 
 def config_auto_email() -> bool:
@@ -344,6 +396,10 @@ def execute_pending(pid: int) -> str:
         from jarvis import ads
         msg = "✅ " + ads.execute(p["kind"], a)
         store.log("reklam", msg)
+    elif p["kind"] == "mac_shell":
+        from jarvis import mac
+        r = mac.send("shell", a["cmd"], timeout=120)
+        msg = ("✅" if r.get("ok") else "⚠️") + " Mac:\n" + (r.get("text") or "")[:3000]
     elif p["kind"] == "calendar_delete":
         g.calendar_delete(a["id"])
         store.log("görüş", f"Təqvimdən silindi: {a.get('title') or a['id']}")
