@@ -353,12 +353,15 @@ async def cmd_mac(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     from jarvis import mac
 
-    st = "🟢 Mac qoşuludur" + (f" ({mac._state['name']})" if mac._state["name"] else "") if mac.online() \
-        else "⚪️ Mac hələ qoşulmayıb"
-    await update.message.reply_text(
-        f"{st}\n\nQuraşdırmaq üçün Mac-də Terminal-ı açın və bu sətri yapışdırıb Enter basın:")
+    if mac.online():
+        name = f" ({mac._state['name']})" if mac._state["name"] else ""
+        await update.message.reply_text(
+            f"🟢 Mac qoşuludur{name}\n\nDeyin: «sonuncu reelsi ekranda göstər», «Chrome-u aç», «ekran şəklini at», "
+            "«Mac-dən de ki ...», «səsi 30 elə».")
+        return
+    await update.message.reply_text("⚪️ Mac hələ qoşulmayıb.\n\nMac-də Terminal-ı açın, bu sətri TAM kopyalayıb "
+                                    "yapışdırın və Enter basın:")
     await update.message.reply_text(mac.install_command())
-    await update.message.reply_text("Sonra deyin: «sonuncu reelsi ekranda göstər», «Chrome-u aç», «ekran şəklini at».")
 
 
 async def cmd_update(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
