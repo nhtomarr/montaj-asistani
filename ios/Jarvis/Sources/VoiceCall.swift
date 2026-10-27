@@ -25,6 +25,18 @@ final class VoiceCall: ObservableObject {
     private var ticker: Timer?
     private let lock = NSLock()
 
+    init() {
+        // Adi telefon zəngi (və ya başqa audio) gələndə Jarvis dərhal mikrofonu buraxır — zəngə mane olmasın
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil,
+                                               queue: .main) { [weak self] note in
+            guard let self, self.connected,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
+            self.error = nil
+            self.stop()
+        }
+    }
+
     // MARK: - Zəng
 
     func start(server: String, token: String) {
