@@ -16,7 +16,10 @@
 
 # Ağıllı ev (Home Assistant)
 ha.{$DOMAIN} {
-	reverse_proxy homeassistant:8123
+	# Home Assistant etibar edilməyən proksidən X-Forwarded-For görəndə 400 qaytarır — başlığı ötürmürük
+	reverse_proxy homeassistant:8123 {
+		header_up -X-Forwarded-For
+	}
 }
 
 # Saytlar: slug.<DOMAIN> və bağlanmış öz domenləri (sertifikat avtomatik)

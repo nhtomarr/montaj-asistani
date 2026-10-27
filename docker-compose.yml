@@ -52,8 +52,9 @@ services:
       - -c
       - |
         mkdir -p /config/custom_components
-        if [ ! -f /config/configuration.yaml ]; then
-          printf 'default_config:\nhttp:\n  use_x_forwarded_for: true\n  trusted_proxies:\n    - 172.16.0.0/12\n    - 10.0.0.0/8\n' > /config/configuration.yaml
+        [ -f /config/configuration.yaml ] || printf 'default_config:\n' > /config/configuration.yaml
+        if ! grep -q trusted_proxies /config/configuration.yaml; then
+          printf '\nhttp:\n  use_x_forwarded_for: true\n  trusted_proxies:\n    - 172.16.0.0/12\n    - 10.0.0.0/8\n    - 192.168.0.0/16\n    - 127.0.0.1\n' >> /config/configuration.yaml
         fi
         if [ ! -d /config/custom_components/xiaomi_home ]; then
           wget -qO /tmp/x.zip https://github.com/XiaoMi/ha_xiaomi_home/archive/refs/heads/main.zip &&
@@ -66,6 +67,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Baku
+      JV_CONFIG_REV: "2"  # dəyişəndə /yenile konteyneri yenidən yaradır
     volumes:
       - ./data/homeassistant:/config
     depends_on:
