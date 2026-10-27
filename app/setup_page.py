@@ -19,6 +19,7 @@ RESTART_FLAG = config.DATA_DIR / ".restart"
 FIELDS = [
     # (açar, etiket, gizli?, kömək)
     ("PANEL_PASSWORD", "Panel şifrəsi (qısa giriş üçün)", True, "Jarvis-ə /login ilə bu şifrə ilə girəcəksiniz"),
+    ("HA_TOKEN", "Ağıllı ev — Home Assistant tokeni", True, "Home Assistant → Profil → Təhlükəsizlik → Long-lived access token"),
     ("OAUTH_BASE_URL", "Google girişi üçün ünvan (istəyə görə)", False, "boş qalsa server ünvanı; məs. https://jarvis.pilothayat.az"),
     ("JARVIS_EVENING_TIME", "Axşam yekunu saatı", False, "məs. 20:30 (boş = 20:30)"),
     ("JARVIS_MAC_BRIEF", "Səhər brifinqini Mac-də səslə de", False, "1 = bəli (default), 0 = xeyr"),

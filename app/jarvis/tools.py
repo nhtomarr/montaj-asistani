@@ -145,6 +145,14 @@ TOOLS = [
        {"action": {"type": "string", "enum": ["open_app", "quit_app", "open_url", "play_video", "screenshot", "notify",
                                               "say", "volume", "media", "lock", "apps", "update", "perm_check", "shell"]}, "arg": STR},
        ["action"]),
+    _s("home_devices", "Ağıllı ev cihazları (Xiaomi robot süpürgə, lampalar, rozetkalar, kondisioner, sensorlar) və "
+       "vəziyyətləri. query: ad üzrə filtr (məs. 'robot'), domain: vacuum/light/switch/climate/sensor.",
+       {"query": STR, "domain": STR}),
+    _s("home_action", "Ağıllı ev cihazına əmr. Robot süpürgə (vacuum.*): start (təmizlə), pause, stop, return_to_base "
+       "(bazaya qayıt), locate (səs çıxart), set_fan_speed (data: {fan_speed}). İşıq/rozetka: turn_on, turn_off, toggle "
+       "(işıq üçün data: {brightness_pct}). Kondisioner: set_temperature (data: {temperature}), set_hvac_mode. "
+       "button.* üçün press. Əvvəlcə home_devices ilə entity_id tap.",
+       {"entity_id": STR, "service": STR, "data": {"type": "object"}}, ["entity_id", "service"]),
     _s("system_status", "Sistem vəziyyəti: qoşulmuş xidmətlər, son video işi, təsdiq gözləyənlər.", {}),
 ]
 
@@ -346,6 +354,14 @@ def _run(name: str, a: dict, ctx: dict) -> str:
                         "xəta": (j["error"] or "")[:200],
                         **({"canlı": pipeline.LIVE[j["id"]]} if j["status"] == "running" and j["id"] in pipeline.LIVE else {})})
         return _ok(out)
+    if name == "home_devices":
+        from jarvis import home
+        return _ok(home.devices(a.get("query", ""), a.get("domain", "")))
+    if name == "home_action":
+        from jarvis import home
+        r = home.action(a["entity_id"], a["service"], a.get("data"))
+        store.log("ev", f"{a['entity_id']} → {a['service']}: {'ok' if r.get('ok') else r.get('xəta', '')[:80]}")
+        return _ok(r)
     if name == "mac_task":
         from jarvis import mac_operator as operator
         return _ok(operator.start(a["task"]))

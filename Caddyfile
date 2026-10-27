@@ -14,6 +14,11 @@
 	}
 }
 
+# Ağıllı ev (Home Assistant)
+ha.{$DOMAIN} {
+	reverse_proxy homeassistant:8123
+}
+
 # Saytlar: slug.<DOMAIN> və bağlanmış öz domenləri (sertifikat avtomatik)
 https:// {
 	tls {

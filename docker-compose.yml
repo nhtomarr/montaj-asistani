@@ -40,6 +40,36 @@ services:
     depends_on:
       - app
 
+  ha-init:
+    # Home Assistant üçün ilkin ayar + rəsmi Xiaomi Home inteqrasiyası (bir dəfə)
+    image: alpine:3.20
+    volumes:
+      - ./data/homeassistant:/config
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /config/custom_components
+        if [ ! -f /config/configuration.yaml ]; then
+          printf 'default_config:\nhttp:\n  use_x_forwarded_for: true\n  trusted_proxies:\n    - 172.16.0.0/12\n    - 10.0.0.0/8\n' > /config/configuration.yaml
+        fi
+        if [ ! -d /config/custom_components/xiaomi_home ]; then
+          wget -qO /tmp/x.zip https://github.com/XiaoMi/ha_xiaomi_home/archive/refs/heads/main.zip &&
+          unzip -q /tmp/x.zip -d /tmp && cp -r /tmp/ha_xiaomi_home-main/custom_components/xiaomi_home /config/custom_components/
+        fi
+        echo ok
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Baku
+    volumes:
+      - ./data/homeassistant:/config
+    depends_on:
+      ha-init:
+        condition: service_completed_successfully
+
 volumes:
   tgdata:
   caddy_data:
