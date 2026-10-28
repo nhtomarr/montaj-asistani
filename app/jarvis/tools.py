@@ -122,6 +122,12 @@ TOOLS = [
     _s("video_task", "YENİ video montaj/Reels/YouTube/Instagram tapşırığı ver (son yüklənən videoya). Yalnız sahib "
        "açıq şəkildə montaj/emal istəyəndə; vəziyyət və ya link soruşanda video_jobs işlət.",
        {"instruction": STR}, ["instruction"]),
+    _s("audience_test", "Sintetik auditoriya testi: reklamı/postu/məhsulu/saytı 50–400 virtual Azərbaycan müştərisinə "
+       "göstərib reaksiyaları toplayır (klik/alar %, seqmentlər, etirazlar, qalib variant, yeni mətn). A/B üçün "
+       "variants={'A':'...','B':'...'}. Sahib şəkil göndəribsə use_recent_images=true. target: hədəf auditoriya "
+       "sahibin sözləri ilə. Arxa fonda gedir (1–3 dəq), hesabat Telegram-a gəlir.",
+       {"content": STR, "variants": {"type": "object"}, "target": STR, "url": STR,
+        "use_recent_images": {"type": "boolean"}, "n": INT}),
     _s("video_jobs", "Video işlərinin siyahısı və CANLI vəziyyəti (hansı mərhələdə, neçə faiz, neçə dəqiqədir gedir, qalan "
        "mərhələlər), hazır montaj və Reels linkləri. İstifadəçi videolar haqqında SORUŞANDA bunu işlət — yeni video_task YARATMA.", {}),
     _s("site_task", "Sayt yarat, düzəlt, geri qaytar və ya siyahıla.",
@@ -343,6 +349,26 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             r = {"ok": sites.undo(slug), "url": sites.site_url(slug)}
         store.log("sayt", f"Sayt ({act}): {r.get('url')}")
         return _ok(r)
+    if name == "audience_test":
+        import threading
+        import time as _t
+        from jarvis import audience
+        imgs = [p for p, ts in (db.kv_get("recent_photos", []) or []) if _t.time() - ts < 3600] \
+            if a.get("use_recent_images") else []
+
+        def work():
+            try:
+                res = audience.run(a.get("content", ""), a.get("target", ""), a.get("variants"), a.get("url", ""),
+                                   imgs, a.get("n") or 200)
+                txt = audience.report_text(res)
+            except Exception as e:  # noqa: BLE001
+                txt = f"❌ Auditoriya testi alınmadı: {str(e)[:300]}"
+            store.log("marketinq", "Sintetik auditoriya testi: " + (a.get("target") or "ümumi")[:80])
+            notify.sink.send_text(txt)
+
+        threading.Thread(target=work, daemon=True).start()
+        return _ok({"status": "başladı", "qeyd": f"{a.get('n') or 200} virtual müştəri ilə test gedir, 1–3 dəqiqəyə "
+                    "hesabat Telegram-a gələcək.", "şəkil_sayı": len(imgs)})
     if name == "video_jobs":
         import pipeline
         out = []

@@ -391,9 +391,18 @@ async def on_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     f = await ph.get_file()
     tmp = config.WORK_DIR / f"ph_{ph.file_unique_id}.jpg"
     await f.download_to_drive(tmp)
+    # son şəkillər (reklam testi və s. üçün)
+    import shutil
+    import time as _t
+    pdir = config.DATA_DIR / "photos"
+    pdir.mkdir(exist_ok=True)
+    keep = pdir / tmp.name
+    shutil.copy(tmp, keep)
+    recent = [x for x in (db.kv_get("recent_photos", []) or []) if _t.time() - x[1] < 3600][-5:]
+    db.kv_set("recent_photos", recent + [[str(keep), _t.time()]])
     sites.add_inbox_image(tmp, "foto.jpg")
     if m.caption:
-        return await ask_jarvis(update, f"[Şəkil göndərdim, sayt üçün gözləmədədir] {m.caption}")
+        return await ask_jarvis(update, f"[Şəkil göndərdim — son şəkillərdə var (reklam testi və ya sayt üçün)] {m.caption}")
     await m.reply_text(f"🖼 Şəkil götürüldü ({sites.inbox_count()} ədəd gözləyir). "
                        "Sonra yazın: \"yeni sayt yığ…\" və ya \"saytda bu şəkilləri qalereyaya əlavə et\".")
 
