@@ -1,6 +1,6 @@
 FROM python:3.12-slim-trixie
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-dejavu-core ca-certificates \
+ && apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-dejavu-core ca-certificates libgl1 libglib2.0-0t64 libportaudio2 \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt .

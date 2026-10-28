@@ -1,0 +1,29 @@
+name: App build
+on:
+  push:
+    paths: ["app/**", ".github/workflows/app.yml"]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker build
+        run: docker build -t app ./app
+      - name: Import + effekt testi
+        run: |
+          docker run --rm -e DATA_DIR=/tmp/d app python -c "
+          import mediapipe, cv2, numpy
+          from editor import fx2, enhance
+          import numpy as np
+          S = fx2.State(1080, 1920, 30)
+          f = np.full((1920, 1080, 3), 120, np.uint8)
+          for name, fn in fx2.EFFECTS.items():
+              e = {'type': name, 'start': 0, 'end': 2, 'dur': 2, 'cache': {}, 'params': {}}
+              if name == 'speed_ramp': e['cache']['buf'] = [f] * 10
+              for t in (0.1, 1.0, 1.9):
+                  S._mask = None; S.t = t
+                  out = fn(S, f.copy(), t, e)
+                  assert out.shape == f.shape, name
+          print('OK', len(fx2.EFFECTS), 'effects, mask:', S.seg.ok)
+          "

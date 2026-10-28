@@ -235,7 +235,8 @@ def run_job(job_id: int) -> None:
             for path, rr in fx_targets:
                 fx = enhance.apply(path, tr.remap_words(words, rr), path, extra=plan.get("extra", ""),
                                    progress=pr.percent)
-                pr.note(f"✨ {fx['highlights']} animasiyalı yazı, {fx['zooms']} zoom, {fx['broll']} B-roll, "
+                pr.note(f"✨ {fx.get('effects', 0)} effekt ({', '.join(fx.get('effect_types', [])[:8]) or '-'}), "
+                        f"{fx['highlights']} animasiyalı yazı, {fx['zooms']} zoom, {fx['broll']} B-roll, "
                         f"{fx['sfx']} səs effekti")
 
         result["language"] = lang

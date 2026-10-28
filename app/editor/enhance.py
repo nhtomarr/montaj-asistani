@@ -207,6 +207,30 @@ def apply(src: str | Path, words: list[dict], out: str | Path, *, extra: str = "
     p = plan(words, info["duration"], extra, max_broll=4 if os.getenv("PEXELS_API_KEY") else 0)
     work = out.with_suffix(".fx")
     work.mkdir(exist_ok=True)
+
+    # 1-ci keçid: kadr effektləri (20+ effekt — checklist, qrafik, jurnal, 3D və s.)
+    fx_list, n_fx = [], 0
+    if os.getenv("JARVIS_FX", "1") != "0":
+        try:
+            from editor import fx2
+            fx_list = fx2.plan(words, info["duration"], extra, H > W)
+            if fx_list:
+                pre = work / "pre.mp4"
+                n_fx = fx2.render(src, pre, fx_list, progress=(lambda x: progress(x * .6)) if progress else None)
+                if n_fx:
+                    src = pre
+                    busy = [(e["start"] - .2, e["end"] + .2) for e in fx_list]
+                    free = lambda a, b: not any(a < y and b > x for x, y in busy)  # noqa: E731
+                    p["zooms"] = [z for z in p["zooms"] if free(z["start"], z["end"])]
+                    p["highlights"] = [h for h in p["highlights"] if free(h["start"], h["end"])]
+                    p["broll"] = [b for b in p["broll"] if free(b["start"], b["end"])]
+                    p["sfx"] = [x for x in p["sfx"] if free(float(x["t"]) - .1, float(x["t"]) + .1)] + [
+                        {"t": e["start"], "type": fx2.SFX_FOR.get(e["type"], "pop")} for e in fx_list]
+        except Exception as ex:  # noqa: BLE001 — effektlər alınmasa adi dinamik montaj davam edir
+            print("fx2 error:", ex)
+    _progress = progress
+    if progress and n_fx:
+        progress = lambda x: _progress(.6 + x * .4)  # noqa: E731
     ass = write_ass(words, p["highlights"], W, H, work / "fx.ass")
 
     inputs = ["-i", str(src)]
@@ -283,4 +307,4 @@ def apply(src: str | Path, words: list[dict], out: str | Path, *, extra: str = "
         raise RuntimeError(f"Dinamik montaj xətası:\n{err[-2000:]}")
     tmp.replace(out)
     return {"highlights": len(p["highlights"]), "zooms": len(p["zooms"]), "broll": len(used_broll),
-            "sfx": len(sfx_list), "plan": p}
+            "sfx": len(sfx_list), "effects": n_fx, "effect_types": [e["type"] for e in fx_list][:n_fx], "plan": p}
