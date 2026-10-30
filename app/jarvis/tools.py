@@ -128,6 +128,18 @@ TOOLS = [
        "sahibin sözləri ilə. Arxa fonda gedir (1–3 dəq), hesabat Telegram-a gəlir.",
        {"content": STR, "variants": {"type": "object"}, "target": STR, "url": STR,
         "use_recent_images": {"type": "boolean"}, "n": INT}),
+    _s("ig_overview", "Instagram hesabı (qeyri-rəsmi giriş): izləyici, bio, son postların bəyənmə/şərh/baxış sayı.",
+       {"n": INT}),
+    _s("ig_comments", "Son postlardakı şərhlər (kim, mətn, cavablanıbmı) — cavab yazmaq üçün comment_id və media_id.",
+       {"posts": INT}),
+    _s("ig_reply", "Instagram şərhinə cavab yaz (sahibin təsdiqi ilə).",
+       {"media_id": STR, "comment_id": STR, "text": STR}, ["media_id", "comment_id", "text"]),
+    _s("ig_competitor", "Rəqib/nümunə hesabın (username) ən yaxşı və ən zəif postları — baxış, bəyənmə, şərh, mətn. "
+       "Sonra niyə tutduğunu analiz et və sahibin brendi üçün ssenari təklif et.",
+       {"username": STR, "n": INT}, ["username"]),
+    _s("ig_publish", "Instagram-da yayımla (sahibin təsdiqi ilə). file: 'latest_reels' (son montaj Reels), "
+       "'recent_photo' (son göndərilən şəkil) və ya fayl yolu.",
+       {"kind": {"type": "string", "enum": ["reel", "photo"]}, "file": STR, "caption": STR}, ["kind", "file", "caption"]),
     _s("video_jobs", "Video işlərinin siyahısı və CANLI vəziyyəti (hansı mərhələdə, neçə faiz, neçə dəqiqədir gedir, qalan "
        "mərhələlər), hazır montaj və Reels linkləri. İstifadəçi videolar haqqında SORUŞANDA bunu işlət — yeni video_task YARATMA.", {}),
     _s("site_task", "Sayt yarat, düzəlt, geri qaytar və ya siyahıla.",
@@ -369,6 +381,8 @@ def _run(name: str, a: dict, ctx: dict) -> str:
         threading.Thread(target=work, daemon=True).start()
         return _ok({"status": "başladı", "qeyd": f"{a.get('n') or 200} virtual müştəri ilə test gedir, 1–3 dəqiqəyə "
                     "hesabat Telegram-a gələcək.", "şəkil_sayı": len(imgs)})
+    if name.startswith("ig_"):
+        return _ok(_ig(name, a))
     if name == "video_jobs":
         import pipeline
         out = []
@@ -414,6 +428,41 @@ def _run(name: str, a: dict, ctx: dict) -> str:
             "mac": __import__("jarvis.mac", fromlist=["x"]).online(),
         })
     return _ok({"xəta": f"naməlum alət {name}"})
+
+
+def _ig(name: str, a: dict) -> dict:
+    from jarvis import insta
+    try:
+        if name == "ig_overview":
+            return insta.overview(a.get("n") or 12)
+        if name == "ig_comments":
+            return {"şərhlər": insta.comments(a.get("posts") or 5)}
+        if name == "ig_competitor":
+            return insta.competitor(a["username"], a.get("n") or 24)
+        if name == "ig_reply":
+            return json.loads(_approval("ig_reply", a, f"💬 Instagram şərhinə cavab:\n«{a['text'][:800]}»"))
+        if name == "ig_publish":
+            f = a["file"]
+            if f == "latest_reels":
+                f = None
+                for j in db.list_jobs(15):
+                    r = j["result"] or {}
+                    if (r.get("reels") or {}).get("path"):
+                        f = r["reels"]["path"]
+                        break
+            elif f == "recent_photo":
+                ph = db.kv_get("recent_photos", []) or []
+                f = ph[-1][0] if ph else None
+            if not f:
+                return {"ok": False, "xəta": "Yayımlanacaq fayl tapılmadı."}
+            payload = {**a, "file": f}
+            return json.loads(_approval("ig_publish", payload, f"📸 Instagram-da yayımlansın ({a['kind']}):\n"
+                                                              f"{a['caption'][:900]}"))
+    except insta.IGError as e:
+        return {"ok": False, "xəta": str(e)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "xəta": f"Instagram: {str(e)[:300]}"}
+    return {"ok": False}
 
 
 def _latest_output(which: str) -> str | None:
@@ -515,6 +564,18 @@ def execute_pending(pid: int) -> str:
         from jarvis import ads
         msg = "✅ " + ads.execute(p["kind"], a)
         store.log("reklam", msg)
+    elif p["kind"] in ("ig_reply", "ig_publish"):
+        from jarvis import insta
+        try:
+            if p["kind"] == "ig_reply":
+                insta.reply(a["media_id"], a["comment_id"], a["text"])
+                msg = "✅ Instagram şərhinə cavab yazıldı."
+            else:
+                r = insta.publish(a["kind"], a["file"], a["caption"])
+                msg = f"✅ Instagram-da yayımlandı: {r['link']}"
+        except Exception as e:  # noqa: BLE001
+            msg = f"⚠️ Instagram: {str(e)[:300]}"
+        store.log("instagram", msg)
     elif p["kind"] == "mac_shell":
         from jarvis import mac
         r = mac.send("shell", a["cmd"], timeout=120)

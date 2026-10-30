@@ -375,6 +375,16 @@ async def cmd_panel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"⚙️ Ayarlar: {base}/setup?t={config.PANEL_TOKEN}")
 
 
+async def cmd_igkod(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update):
+        return
+    code = update.message.text.partition(" ")[2].strip().replace(" ", "")
+    if not code.isdigit():
+        return await update.message.reply_text("Belə yazın: /igkod 123456")
+    db.kv_set("ig_code", code)
+    await update.message.reply_text("✅ Kod Instagram-a ötürülür…")
+
+
 async def cmd_update(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not _allowed(update):
         return
@@ -600,6 +610,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("yenile", cmd_update))
     app.add_handler(CommandHandler("profil", cmd_profile))
     app.add_handler(CommandHandler("mac", cmd_mac))
+    app.add_handler(CommandHandler("igkod", cmd_igkod))
     app.add_handler(CommandHandler(["panel", "link"], cmd_panel))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, on_video))

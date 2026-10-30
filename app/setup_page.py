@@ -19,6 +19,10 @@ RESTART_FLAG = config.DATA_DIR / ".restart"
 FIELDS = [
     # (açar, etiket, gizli?, kömək)
     ("PANEL_PASSWORD", "Panel şifrəsi (qısa giriş üçün)", True, "Jarvis-ə /login ilə bu şifrə ilə girəcəksiniz"),
+    ("IG_USERNAME", "Instagram istifadəçi adı (qeyri-rəsmi, sınaq)", False, "risklidir — əvvəl ikinci dərəcəli hesabla yoxlayın"),
+    ("IG_PASSWORD", "Instagram parolu", True, "yalnız bu serverdə saxlanır"),
+    ("IG_2FA_SEED", "Instagram 2FA açarı (istəyə görə)", True, "Authenticator qurulumundakı gizli açar; yoxdursa kod Telegram-da soruşulur"),
+    ("IG_PROXY", "Instagram proksi (istəyə görə)", True, "Azərbaycan IP-li proksi: http://user:pass@host:port — bloklanma riskini azaldır"),
     ("HA_TOKEN", "Ağıllı ev — Home Assistant tokeni", True, "Home Assistant → Profil → Təhlükəsizlik → Long-lived access token"),
     ("OAUTH_BASE_URL", "Google girişi üçün ünvan (istəyə görə)", False, "boş qalsa server ünvanı; məs. https://jarvis.pilothayat.az"),
     ("JARVIS_EVENING_TIME", "Axşam yekunu saatı", False, "məs. 20:30 (boş = 20:30)"),
